@@ -264,12 +264,12 @@ bool trashDataFile(char const* filename, void* /*user_data*/, tr_error** error)
 - (void)update
 {
     //get previous stalled value before update
-    BOOL const wasStalled = self.fStat != NULL && self.stalled;
+    BOOL const wasTransmitting = self.fStat != NULL && self.transmitting;
 
     self.fStat = tr_torrentStat(self.fHandle);
 
-    //make sure the "active" filter is updated when stalled-ness changes
-    if (wasStalled != self.stalled)
+    //make sure the "active" filter is updated when transmitting changes
+    if (wasTransmitting != self.transmitting)
     {
         //posting asynchronously with coalescing to prevent stack overflow on lots of torrents changing state at the same time
         [NSNotificationQueue.defaultQueue enqueueNotification:[NSNotification notificationWithName:@"UpdateQueue" object:self]
@@ -867,6 +867,12 @@ bool trashDataFile(char const* filename, void* /*user_data*/, tr_error** error)
 {
     return self.fStat->activity != TR_STATUS_STOPPED && self.fStat->activity != TR_STATUS_DOWNLOAD_WAIT &&
         self.fStat->activity != TR_STATUS_SEED_WAIT;
+}
+
+- (BOOL)isTransmitting
+{
+    return self.fStat->peersGettingFromUs > 0 || self.fStat->peersSendingToUs > 0 || self.fStat->webseedsSendingToUs > 0 ||
+        self.fStat->activity == TR_STATUS_CHECK;
 }
 
 - (BOOL)isSeeding
@@ -2068,20 +2074,16 @@ bool trashDataFile(char const* filename, void* /*user_data*/, tr_error** error)
 
 - (NSString*)etaString
 {
-    NSInteger eta;
-    BOOL fromIdle;
-    //don't check for both, since if there's a regular ETA, the torrent isn't idle so it's meaningless
-    if (self.fStat->eta != TR_ETA_NOT_AVAIL && self.fStat->eta != TR_ETA_UNKNOWN)
-    {
-        eta = self.fStat->eta;
-        fromIdle = NO;
-    }
-    else if (self.fStat->etaIdle != TR_ETA_NOT_AVAIL && self.fStat->etaIdle < kETAIdleDisplaySec)
+    time_t eta = self.fStat->eta;
+    // if there's a regular ETA, the torrent isn't idle
+    BOOL fromIdle = NO;
+    if (eta == TR_ETA_NOT_AVAIL || eta == TR_ETA_UNKNOWN)
     {
         eta = self.fStat->etaIdle;
         fromIdle = YES;
     }
-    else
+    // Foundation undocumented behavior: values above INT_MAX (68 years) are interpreted as negative values by `stringFromTimeInterval` (#3451)
+    if (eta < 0 || eta > INT_MAX || (fromIdle && eta >= kETAIdleDisplaySec))
     {
         return NSLocalizedString(@"remaining time unknown", "Torrent -> eta string");
     }
@@ -2095,6 +2097,8 @@ bool trashDataFile(char const* filename, void* /*user_data*/, tr_error** error)
         formatter.collapsesLargestUnit = YES;
         formatter.includesTimeRemainingPhrase = YES;
     });
+    // the duration of months being variable, setting the reference date to now (instead of 00:00:00 UTC on 1 January 2001)
+    formatter.referenceDate = NSDate.date;
     NSString* idleString = [formatter stringFromTimeInterval:eta];
 
     if (fromIdle)
