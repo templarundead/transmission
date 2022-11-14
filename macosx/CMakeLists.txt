@@ -1,5 +1,10 @@
 project(trmac)
 
+if(CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS 10.9)
+    # 10.9 required for actool to produce Assets.car
+    message(FATAL_ERROR "Targeting macOS versions before 10.9 is not supported, please adjust CMAKE_OSX_DEPLOYMENT_TARGET (${CMAKE_OSX_DEPLOYMENT_TARGET})")
+endif()
+
 include_directories(${CMAKE_SOURCE_DIR})
 
 add_compile_options(
@@ -67,6 +72,7 @@ set(${PROJECT_NAME}_SOURCES
     MessageWindowController.mm
     NSApplicationAdditions.mm
     NSImageAdditions.mm
+    NSKeyedUnarchiverAdditions.mm
     NSMutableArrayAdditions.mm
     NSStringAdditions.mm
     PeerProgressIndicatorCell.mm
@@ -138,6 +144,7 @@ set(${PROJECT_NAME}_HEADERS
     MessageWindowController.h
     NSApplicationAdditions.h
     NSImageAdditions.h
+    NSKeyedUnarchiverAdditions.h
     NSMutableArrayAdditions.h
     NSStringAdditions.h
     PeerProgressIndicatorCell.h
