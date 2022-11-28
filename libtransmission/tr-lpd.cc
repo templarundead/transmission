@@ -18,6 +18,7 @@
 #include <netinet/in.h> /* sockaddr_in */
 #endif
 
+#include <event2/event.h>
 #include <event2/util.h>
 
 #include <fmt/format.h>
@@ -520,7 +521,7 @@ private:
         }
 
         auto const next_announce_after = now + TorrentAnnounceIntervalSec;
-        for (auto& info_hash_string : info_hash_strings)
+        for (auto const& info_hash_string : info_hash_strings)
         {
             mediator_.setNextAnnounceTime(info_hash_string, next_announce_after);
         }
