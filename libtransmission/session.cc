@@ -508,24 +508,6 @@ void tr_session::onNowTimer()
     tr_timeUpdate(time(nullptr));
     alt_speeds_.checkScheduler();
 
-    // TODO: this seems a little silly. Why do we increment this
-    // every second instead of computing the value as needed by
-    // subtracting the current time from a start time?
-    for (auto* const tor : torrents())
-    {
-        if (tor->isRunning)
-        {
-            if (tor->isDone())
-            {
-                ++tor->secondsSeeding;
-            }
-            else
-            {
-                ++tor->secondsDownloading;
-            }
-        }
-    }
-
     // set the timer to kick again right after (10ms after) the next second
     auto const now = std::chrono::system_clock::now();
     auto const target_time = std::chrono::time_point_cast<std::chrono::seconds>(now) + 1s + 10ms;
@@ -1248,7 +1230,6 @@ void tr_session::closeImplPart1(std::promise<void>* closed_promise, std::chrono:
         tr_torrentFreeInSessionThread(tor);
     }
     torrents.clear();
-    tr_utpClose(this);
     // ...now that all the torrents have been closed, any remaining
     // `&event=stopped` announce messages are queued in the announcer.
     // Tell the announcer to start shutdown, which sends out the stop
@@ -1280,11 +1261,12 @@ void tr_session::closeImplPart2(std::promise<void>* closed_promise, std::chrono:
 
     this->announcer_.reset();
     this->announcer_udp_.reset();
-    this->udp_core_.reset();
 
     stats().saveIfDirty();
     peer_mgr_.reset();
     openFiles().closeAll();
+    tr_utpClose(this);
+    this->udp_core_.reset();
 
     // tada we are done!
     closed_promise->set_value();

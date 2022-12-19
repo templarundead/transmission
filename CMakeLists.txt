@@ -428,6 +428,9 @@ if(NOT USE_SYSTEM_MINIUPNPC)
     set(MINIUPNPC_API_VERSION 12)
 endif()
 
+add_subdirectory(third-party/jsonsl)
+add_subdirectory(third-party/wildmat)
+
 tr_add_external_auto_library(DHT dht dht)
 
 tr_add_external_auto_library(PSL libpsl psl)
@@ -602,6 +605,12 @@ else()
 
     unset(CMAKE_REQUIRED_FLAGS)
 endif()
+
+string(REPLACE ";" "$<SEMICOLON>" C_WARNING_FLAGS_GENEX "${C_WARNING_FLAGS}")
+string(REPLACE ";" "$<SEMICOLON>" CXX_WARNING_FLAGS_GENEX "${CXX_WARNING_FLAGS}")
+add_compile_options(
+    $<$<COMPILE_LANGUAGE:C>:${C_WARNING_FLAGS_GENEX}>
+    $<$<COMPILE_LANGUAGE:CXX>:${CXX_WARNING_FLAGS_GENEX}>)
 
 ###
 
