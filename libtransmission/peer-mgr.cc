@@ -161,13 +161,6 @@ struct peer_atom
     {
     }
 
-#ifdef TR_ENABLE_ASSERTS
-    [[nodiscard]] bool isValid() const noexcept
-    {
-        return fromFirst < TR_PEER_FROM__MAX && fromBest < TR_PEER_FROM__MAX && addr.is_valid();
-    }
-#endif
-
     [[nodiscard]] constexpr auto isSeed() const noexcept
     {
         return (flags & ADDED_F_SEED_FLAG) != 0;
@@ -2492,10 +2485,9 @@ void tr_peerMgr::bandwidthPulse()
 
     pumpAllPeers(this);
 
-    /* allocate bandwidth to the peers */
+    // allocate bandwidth to the peers
     static auto constexpr Msec = std::chrono::duration_cast<std::chrono::milliseconds>(BandwidthPeriod).count();
-    session->top_bandwidth_.allocate(TR_UP, Msec);
-    session->top_bandwidth_.allocate(TR_DOWN, Msec);
+    session->top_bandwidth_.allocate(Msec);
 
     /* torrent upkeep */
     for (auto* const tor : session->torrents())
