@@ -44,7 +44,7 @@ static CGFloat const kStackViewVerticalSpacing = 8.0;
 
 @property(nonatomic) IBOutlet NSStackView* fActivityStackView;
 @property(nonatomic) IBOutlet NSView* fDatesView;
-@property(nonatomic, readwrite) CGFloat fHeightChange;
+@property(nonatomic, readonly) CGFloat fHeightChange;
 @property(nonatomic, readwrite) CGFloat fCurrentHeight;
 @property(nonatomic, readonly) CGFloat fHorizLayoutHeight;
 @property(nonatomic, readonly) CGFloat fHorizLayoutWidth;
@@ -96,15 +96,10 @@ static CGFloat const kStackViewVerticalSpacing = 8.0;
 
 - (NSRect)viewRect
 {
-    CGFloat difference = self.fHeightChange;
-
-    NSRect windowRect = self.view.window.frame;
     NSRect viewRect = self.view.frame;
-    if (difference != 0)
-    {
-        viewRect.size.height -= difference;
-        viewRect.size.width = NSWidth(windowRect);
-    }
+
+    CGFloat difference = self.fHeightChange;
+    viewRect.size.height -= difference;
 
     return viewRect;
 }
@@ -131,32 +126,24 @@ static CGFloat const kStackViewVerticalSpacing = 8.0;
 {
     self.oldHeight = self.fCurrentHeight;
 
-    [self checkLayout];
-
-    if (self.oldHeight != self.fCurrentHeight)
-    {
-        [self updateWindowLayout];
-    }
+    [self updateWindowLayout];
 }
 
 - (void)updateWindowLayout
 {
-    if (self.fCurrentHeight != 0)
-    {
-        [self checkLayout];
+    [self checkLayout];
 
-        CGFloat difference = self.fHeightChange;
+    CGFloat difference = self.fHeightChange;
 
-        NSRect windowRect = self.view.window.frame;
-        windowRect.origin.y += difference;
-        windowRect.size.height -= difference;
+    NSRect windowRect = self.view.window.frame;
+    windowRect.origin.y += difference;
+    windowRect.size.height -= difference;
 
-        self.view.window.minSize = NSMakeSize(self.view.window.minSize.width, NSHeight(windowRect));
-        self.view.window.maxSize = NSMakeSize(FLT_MAX, NSHeight(windowRect));
+    self.view.window.minSize = NSMakeSize(self.view.window.minSize.width, NSHeight(windowRect));
+    self.view.window.maxSize = NSMakeSize(FLT_MAX, NSHeight(windowRect));
 
-        self.view.frame = [self viewRect];
-        [self.view.window setFrame:windowRect display:YES animate:YES];
-    }
+    self.view.frame = [self viewRect];
+    [self.view.window setFrame:windowRect display:YES animate:YES];
 }
 
 - (void)setInfoForTorrents:(NSArray<Torrent*>*)torrents

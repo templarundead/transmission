@@ -158,18 +158,6 @@ public:
         return evbuffer_get_length(buf_.get()) == 0;
     }
 
-    [[nodiscard]] auto vecs(size_t n_bytes) const
-    {
-        auto chains = std::vector<Iovec>(evbuffer_peek(buf_.get(), n_bytes, nullptr, nullptr, 0));
-        evbuffer_peek(buf_.get(), n_bytes, nullptr, std::data(chains), std::size(chains));
-        return chains;
-    }
-
-    [[nodiscard]] auto vecs() const
-    {
-        return vecs(size());
-    }
-
     [[nodiscard]] auto begin() noexcept
     {
         return Iterator{ buf_.get(), 0U };
@@ -201,7 +189,7 @@ public:
     }
 
     template<typename T>
-    [[nodiscard]] bool startsWith(T const& needle) const
+    [[nodiscard]] TR_CONSTEXPR20 bool startsWith(T const& needle) const
     {
         auto const n_bytes = std::size(needle);
         auto const needle_begin = reinterpret_cast<std::byte const*>(std::data(needle));

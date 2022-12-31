@@ -56,6 +56,7 @@ set(${PROJECT_NAME}_SOURCES
     FilterBarView.mm
     FilterButton.mm
     GlobalOptionsPopoverViewController.mm
+    GroupPopUpButtonCell.mm
     GroupTextCell.mm
     GroupToolbarItem.mm
     GroupsController.mm
@@ -83,14 +84,15 @@ set(${PROJECT_NAME}_SOURCES
     PredicateEditorRowTemplateAny.mm
     PrefsController.mm
     PrefsWindow.mm
+    PriorityPopUpButtonCell.mm
     ProgressGradients.mm
     ShareToolbarItem.mm
     ShareTorrentFileHelper.mm
+    SparkleProxy.mm
     StatsWindowController.mm
     StatusBarController.mm
     StatusBarView.mm
     Toolbar.mm
-    ToolbarSegmentedCell.mm
     Torrent.mm
     TorrentCell.mm
     TorrentGroup.mm
@@ -113,6 +115,7 @@ set(${PROJECT_NAME}_HEADERS
     BlocklistScheduler.h
     BonjourController.h
     ButtonToolbarItem.h
+    CocoaCompatibility.h
     ColorTextField.h
     Controller.h
     CreatorWindowController.h
@@ -130,6 +133,8 @@ set(${PROJECT_NAME}_HEADERS
     FilterBarView.h
     FilterButton.h
     GlobalOptionsPopoverViewController.h
+    GroupPopUpButtonCell.h
+    GroupTextCell.h
     GroupToolbarItem.h
     GroupsController.h
     GroupsPrefsController.h
@@ -156,6 +161,7 @@ set(${PROJECT_NAME}_HEADERS
     PredicateEditorRowTemplateAny.h
     PrefsController.h
     PrefsWindow.h
+    PriorityPopUpButtonCell.h
     ProgressGradients.h
     ShareToolbarItem.h
     ShareTorrentFileHelper.h
@@ -163,7 +169,6 @@ set(${PROJECT_NAME}_HEADERS
     StatusBarController.h
     StatusBarView.h
     Toolbar.h
-    ToolbarSegmentedCell.h
     Torrent.h
     TorrentCell.h
     TorrentGroup.h
@@ -393,9 +398,11 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/VDKQueue
 )
 
-add_definitions(
-    -Wno-unused-parameter
+add_compile_options(
+    # #warnings are good practice in development
     "-Wno-#warnings"
+    # GNU extensions are good practice in Objective-C
+    -Wno-gnu
 )
 
 add_library(vdkqueue STATIC

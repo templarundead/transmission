@@ -75,7 +75,7 @@ tr_port tr_session::randomPort() const
     auto const lower = std::min(settings_.peer_port_random_low.host(), settings_.peer_port_random_high.host());
     auto const upper = std::max(settings_.peer_port_random_low.host(), settings_.peer_port_random_high.host());
     auto const range = upper - lower;
-    return tr_port::fromHost(lower + tr_rand_int(range + 1));
+    return tr_port::fromHost(lower + tr_rand_int(range + 1U));
 }
 
 /* Generate a peer id : "-TRxyzb-" + 12 random alphanumeric
@@ -218,8 +218,7 @@ std::optional<std::string_view> tr_session::WebMediator::userAgent() const
 
 std::optional<std::string> tr_session::WebMediator::publicAddressV4() const
 {
-    auto const [addr, is_default_value] = session_->publicAddress(TR_AF_INET);
-    if (!is_default_value)
+    if (auto const [addr, is_any] = session_->publicAddress(TR_AF_INET); !is_any)
     {
         return addr.display_name();
     }
@@ -229,8 +228,7 @@ std::optional<std::string> tr_session::WebMediator::publicAddressV4() const
 
 std::optional<std::string> tr_session::WebMediator::publicAddressV6() const
 {
-    auto const [addr, is_default_value] = session_->publicAddress(TR_AF_INET6);
-    if (!is_default_value)
+    if (auto const [addr, is_any] = session_->publicAddress(TR_AF_INET6); !is_any)
     {
         return addr.display_name();
     }
@@ -259,6 +257,11 @@ void tr_session::WebMediator::notifyBandwidthConsumed(int torrent_id, size_t byt
 void tr_session::WebMediator::run(tr_web::FetchDoneFunc&& func, tr_web::FetchResponse&& response) const
 {
     session_->runInSessionThread(std::move(func), std::move(response));
+}
+
+time_t tr_session::WebMediator::now() const
+{
+    return tr_time();
 }
 
 void tr_sessionFetch(tr_session* session, tr_web::FetchOptions&& options)
@@ -337,6 +340,8 @@ tr_session::PublicAddressResult tr_session::publicAddress(tr_address_type type) 
 {
     if (type == TR_AF_INET)
     {
+        // if user provided an address, use it.
+        // otherwise, use any_ipv4 (0.0.0.0).
         static auto constexpr DefaultAddr = tr_address::any_ipv4();
         auto addr = tr_address::from_string(settings_.bind_address_ipv4).value_or(DefaultAddr);
         return { addr, addr == DefaultAddr };
@@ -344,9 +349,13 @@ tr_session::PublicAddressResult tr_session::publicAddress(tr_address_type type) 
 
     if (type == TR_AF_INET6)
     {
-        static auto constexpr DefaultAddr = tr_address::any_ipv6();
-        auto addr = tr_address::from_string(settings_.bind_address_ipv6).value_or(DefaultAddr);
-        return { addr, addr == DefaultAddr };
+        // if user provided an address, use it.
+        // otherwise, if we can determine which one to use via tr_globalIPv6 magic, use it.
+        // otherwise, use any_ipv6 (::).
+        static auto constexpr AnyAddr = tr_address::any_ipv6();
+        auto const default_addr = tr_globalIPv6().value_or(AnyAddr);
+        auto addr = tr_address::from_string(settings_.bind_address_ipv6).value_or(default_addr);
+        return { addr, addr == AnyAddr };
     }
 
     TR_ASSERT_MSG(false, "invalid type");
@@ -507,24 +516,6 @@ void tr_session::onNowTimer()
     // tr_session upkeep tasks to perform once per second
     tr_timeUpdate(time(nullptr));
     alt_speeds_.checkScheduler();
-
-    // TODO: this seems a little silly. Why do we increment this
-    // every second instead of computing the value as needed by
-    // subtracting the current time from a start time?
-    for (auto* const tor : torrents())
-    {
-        if (tor->isRunning)
-        {
-            if (tor->isDone())
-            {
-                ++tor->secondsSeeding;
-            }
-            else
-            {
-                ++tor->secondsDownloading;
-            }
-        }
-    }
 
     // set the timer to kick again right after (10ms after) the next second
     auto const now = std::chrono::system_clock::now();
@@ -1192,13 +1183,6 @@ void tr_sessionSetDeleteSource(tr_session* session, bool delete_source)
     session->settings_.should_delete_source_torrents = delete_source;
 }
 
-bool tr_sessionGetDeleteSource(tr_session const* session)
-{
-    TR_ASSERT(session != nullptr);
-
-    return session->shouldDeleteSource();
-}
-
 /***
 ****
 ***/
@@ -1279,12 +1263,12 @@ void tr_session::closeImplPart2(std::promise<void>* closed_promise, std::chrono:
 
     this->announcer_.reset();
     this->announcer_udp_.reset();
-    this->udp_core_.reset();
 
     stats().saveIfDirty();
     peer_mgr_.reset();
-    tr_utpClose(this);
     openFiles().closeAll();
+    tr_utpClose(this);
+    this->udp_core_.reset();
 
     // tada we are done!
     closed_promise->set_value();
@@ -1344,7 +1328,7 @@ static void sessionLoadTorrents(tr_session* session, tr_ctor* ctor, std::promise
     if (n_torrents != 0U)
     {
         tr_logAddInfo(fmt::format(
-            ngettext("Loaded {count} torrent", "Loaded {count} torrents", n_torrents),
+            tr_ngettext("Loaded {count} torrent", "Loaded {count} torrents", n_torrents),
             fmt::arg("count", n_torrents)));
     }
 

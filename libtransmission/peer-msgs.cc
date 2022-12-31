@@ -231,6 +231,12 @@ static void updateDesiredRequestCount(tr_peerMsgsImpl* msgs);
 #define logdbg(msgs, text) myLogMacro(msgs, TR_LOG_DEBUG, text)
 #define logtrace(msgs, text) myLogMacro(msgs, TR_LOG_TRACE, text)
 
+tr_peerMsgs::~tr_peerMsgs()
+{
+    [[maybe_unused]] auto const n_prev = n_peers_--;
+    TR_ASSERT(n_prev > 0U);
+}
+
 /**
  * Low-level communication state information about a connected peer.
  *
@@ -284,7 +290,7 @@ public:
         if (session->allowsDHT() && io->supports_dht())
         {
             // only send PORT over IPv6 iff IPv6 DHT is running (BEP-32).
-            if (io->address().is_ipv4() || tr_globalIPv6(nullptr).has_value())
+            if (auto const [addr, is_any] = session->publicAddress(TR_AF_INET6); !is_any)
             {
                 protocolSendPort(this, session->udpPort());
             }
@@ -872,7 +878,6 @@ static void cancelAllRequestsToClient(tr_peerMsgsImpl* msgs)
 static void sendLtepHandshake(tr_peerMsgsImpl* msgs)
 {
     auto& out = msgs->outMessages;
-    auto const ipv6 = tr_globalIPv6(msgs->session);
     static tr_quark version_quark = 0;
 
     if (msgs->clientSentLtepHandshake)
@@ -910,9 +915,10 @@ static void sendLtepHandshake(tr_peerMsgsImpl* msgs)
     tr_variantInitDict(&val, 8);
     tr_variantDictAddBool(&val, TR_KEY_e, msgs->session->encryptionMode() != TR_CLEAR_PREFERRED);
 
-    if (ipv6.has_value())
+    if (auto const [addr, is_any] = msgs->session->publicAddress(TR_AF_INET6); !is_any)
     {
-        tr_variantDictAddRaw(&val, TR_KEY_ipv6, &*ipv6, sizeof(*ipv6));
+        TR_ASSERT(addr.is_ipv6());
+        tr_variantDictAddRaw(&val, TR_KEY_ipv6, &addr.addr.addr6, sizeof(addr.addr.addr6));
     }
 
     // http://bittorrent.org/beps/bep_0009.html

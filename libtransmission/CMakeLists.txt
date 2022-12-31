@@ -5,7 +5,7 @@ configure_file(
   version.h
 )
 
-set(PROJECT_FILES
+set(${PROJECT_NAME}_SOURCES
   announce-list.cc
   announcer-http.cc
   announcer-udp.cc
@@ -18,10 +18,10 @@ set(PROJECT_FILES
   clients.cc
   completion.cc
   crypto-utils-ccrypto.cc
-  crypto-utils-cyassl.cc
   crypto-utils-fallback.cc
+  crypto-utils-mbedtls.cc
   crypto-utils-openssl.cc
-  crypto-utils-polarssl.cc
+  crypto-utils-wolfssl.cc
   crypto-utils.cc
   error.cc
   file-piece-map.cc
@@ -89,18 +89,8 @@ set(PROJECT_FILES
   webseed.cc
 )
 
-set(THIRD_PARTY_FILES
-  jsonsl.c
-  wildmat.c
-)
-
-set(${PROJECT_NAME}_SOURCES
-  ${PROJECT_FILES}
-  ${THIRD_PARTY_FILES}
-)
-
 set_source_files_properties(crypto-utils-fallback.cc PROPERTIES HEADER_FILE_ONLY ON)
-foreach(CP ccrypto cyassl openssl polarssl)
+foreach(CP ccrypto mbedtls openssl wolfssl)
     if(NOT CP STREQUAL CRYPTO_PKG)
         set_source_files_properties(crypto-utils-${CP}.cc PROPERTIES HEADER_FILE_ONLY ON)
     endif()
@@ -247,14 +237,6 @@ if(USE_SYSTEM_B64)
     add_definitions(-DUSE_SYSTEM_B64)
 endif()
 
-if(CYASSL_IS_WOLFSSL)
-    add_definitions(-DCYASSL_IS_WOLFSSL)
-endif()
-
-if(POLARSSL_IS_MBEDTLS)
-    add_definitions(-DPOLARSSL_IS_MBEDTLS)
-endif()
-
 if(HAVE_SO_REUSEPORT)
     add_definitions(-DHAVE_SO_REUSEPORT=1)
 endif()
@@ -317,6 +299,8 @@ target_link_libraries(${TR_NAME}
     ${LIBINTL_LIBRARY}
     ${LIBM_LIBRARY}
     ${TR_NETWORK_LIBRARIES}
+    jsonsl
+    wildmat
 )
 
 if(ICONV_FOUND)
