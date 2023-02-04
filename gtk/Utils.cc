@@ -86,19 +86,19 @@ char const* const speed_T_str = N_("TB/s");
 
 void gtr_message(std::string const& message)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+    // NOLINTNEXTLINE(*-vararg)
     g_message("%s", message.c_str());
 }
 
 void gtr_warning(std::string const& message)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+    // NOLINTNEXTLINE(*-vararg)
     g_warning("%s", message.c_str());
 }
 
 void gtr_error(std::string const& message)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+    // NOLINTNEXTLINE(*-vararg)
     g_error("%s", message.c_str());
 }
 
@@ -488,7 +488,7 @@ Glib::SignalProxy<TrObjectSignalNotifyCallback> gtr_object_signal_notify(Glib::O
 
 void gtr_object_notify_emit(Glib::ObjectBase& object)
 {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+    // NOLINTNEXTLINE(*-vararg)
     g_signal_emit_by_name(object.gobj(), "notify", nullptr);
 }
 
@@ -563,12 +563,12 @@ EnumComboModelColumns const enum_combo_cols;
 
 } // namespace
 
-void gtr_combo_box_set_active_enum(Gtk::ComboBox& combo_box, int value)
+void gtr_combo_box_set_active_enum(Gtk::ComboBox& combo, int value)
 {
     auto const& column = enum_combo_cols.value;
 
     /* do the value and current value match? */
-    if (auto const iter = combo_box.get_active(); iter)
+    if (auto const iter = combo.get_active(); iter)
     {
         if (iter->get_value(column) == value)
         {
@@ -577,11 +577,11 @@ void gtr_combo_box_set_active_enum(Gtk::ComboBox& combo_box, int value)
     }
 
     /* find the one to select */
-    for (auto const& row : combo_box.get_model()->children())
+    for (auto const& row : combo.get_model()->children())
     {
         if (row.get_value(column) == value)
         {
-            combo_box.set_active(TR_GTK_TREE_MODEL_CHILD_ITER(row));
+            combo.set_active(TR_GTK_TREE_MODEL_CHILD_ITER(row));
             return;
         }
     }
@@ -606,11 +606,11 @@ void gtr_combo_box_set_enum(Gtk::ComboBox& combo, std::vector<std::pair<Glib::us
     combo.add_attribute(r->property_text(), enum_combo_cols.label);
 }
 
-int gtr_combo_box_get_active_enum(Gtk::ComboBox const& combo_box)
+int gtr_combo_box_get_active_enum(Gtk::ComboBox const& combo)
 {
     int value = 0;
 
-    if (auto const iter = combo_box.get_active(); iter)
+    if (auto const iter = combo.get_active(); iter)
     {
         iter->get_value(0, value);
     }

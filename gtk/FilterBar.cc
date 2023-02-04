@@ -1,4 +1,4 @@
-// This file Copyright © 2012-2022 Mnemosyne LLC.
+// This file Copyright © 2012-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -6,6 +6,7 @@
 #include "FilterBar.h"
 
 #include "FaviconCache.h" // gtr_get_favicon()
+#include "FilterListModel.hh"
 #include "HigWorkarea.h" // GUI_PAD
 #include "ListModelAdapter.h"
 #include "Session.h" // torrent_cols
@@ -110,11 +111,8 @@ private:
     Gtk::Entry* entry_ = nullptr;
     Gtk::Label* show_lb_ = nullptr;
     Glib::RefPtr<TorrentFilter> filter_ = TorrentFilter::create();
-    Glib::RefPtr<FilterModel> filter_model_;
+    Glib::RefPtr<FilterListModel<Torrent>> filter_model_;
 
-#if GTKMM_CHECK_VERSION(4, 0, 0)
-    sigc::connection filter_model_items_changed_tag_;
-#endif
     sigc::connection update_count_label_tag_;
     sigc::connection update_filter_models_tag_;
     sigc::connection update_filter_models_on_add_remove_tag_;
@@ -567,7 +565,7 @@ void FilterBar::Impl::update_filter_tracker()
 bool FilterBar::Impl::update_count_label()
 {
     /* get the visible count */
-    auto const visibleCount = static_cast<int>(filter_model_->IF_GTKMM4(get_n_items(), children().size()));
+    auto const visibleCount = static_cast<int>(filter_model_->get_n_items());
 
     /* get the tracker count */
     int trackerCount = 0;
@@ -584,10 +582,13 @@ bool FilterBar::Impl::update_count_label()
     }
 
     /* set the text */
-    show_lb_->set_markup_with_mnemonic(
-        visibleCount == std::min(activityCount, trackerCount) ?
+    if (auto const new_markup = visibleCount == std::min(activityCount, trackerCount) ?
             _("_Show:") :
-            fmt::format(_("_Show {count:L} of:"), fmt::arg("count", visibleCount)));
+            fmt::format(_("_Show {count:L} of:"), fmt::arg("count", visibleCount));
+        new_markup != show_lb_->get_label().raw())
+    {
+        show_lb_->set_markup_with_mnemonic(new_markup);
+    }
 
     return false;
 }
@@ -618,6 +619,11 @@ void FilterBar::Impl::update_filter_models(Torrent::ChangeFlags changes)
     }
 
     filter_->update(changes);
+
+    if (changes.test(activity_flags | tracker_flags))
+    {
+        update_count_label_idle();
+    }
 }
 
 void FilterBar::Impl::update_filter_models_idle(Torrent::ChangeFlags changes)
@@ -701,22 +707,9 @@ FilterBar::Impl::Impl(FilterBar& widget, Glib::RefPtr<Session> const& core)
     activity_combo_box_init(*activity_);
     tracker_combo_box_init(*tracker_);
 
-#if GTKMM_CHECK_VERSION(4, 0, 0)
-    filter_model_ = Gtk::FilterListModel::create(core_->get_sorted_model(), filter_);
-    filter_model_items_changed_tag_ = filter_model_->signal_items_changed().connect(
-        [this](guint /*position*/, guint /*removed*/, guint /*added*/) { update_count_label_idle(); });
-#else
-    static auto const& self_col = Torrent::get_columns().self;
+    filter_->signal_changed().connect([this](auto /*changes*/) { update_count_label_idle(); });
 
-    auto const filter_func = [this](FilterModel::const_iterator const& iter)
-    {
-        return filter_->match(*iter->get_value(self_col));
-    };
-
-    filter_model_ = Gtk::TreeModelFilter::create(core_->get_sorted_model());
-    filter_model_->set_visible_func(filter_func);
-    filter_->signal_changed().connect([this]() { filter_model_->refilter(); });
-#endif
+    filter_model_ = FilterListModel<Torrent>::create(core_->get_sorted_model(), filter_);
 
     tracker_->signal_changed().connect(sigc::mem_fun(*this, &Impl::update_filter_tracker));
     activity_->signal_changed().connect(sigc::mem_fun(*this, &Impl::update_filter_activity));
@@ -735,9 +728,6 @@ FilterBar::Impl::~Impl()
     update_filter_models_on_add_remove_tag_.disconnect();
     update_filter_models_tag_.disconnect();
     update_count_label_tag_.disconnect();
-#if GTKMM_CHECK_VERSION(4, 0, 0)
-    filter_model_items_changed_tag_.disconnect();
-#endif
 }
 
 Glib::RefPtr<FilterBar::Model> FilterBar::get_filter_model() const

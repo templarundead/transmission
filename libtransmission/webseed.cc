@@ -215,7 +215,7 @@ public:
         return bandwidth_;
     }
 
-    [[nodiscard]] size_t activeReqCount(tr_direction dir) const noexcept override
+    [[nodiscard]] TR_CONSTEXPR20 size_t activeReqCount(tr_direction dir) const noexcept override
     {
         if (dir == TR_CLIENT_TO_PEER) // blocks we've requested
         {
@@ -326,9 +326,7 @@ private:
     tr_bandwidth bandwidth_;
 };
 
-/***
-****
-***/
+// ---
 
 struct write_block_data
 {
@@ -410,9 +408,7 @@ void useFetchedBlocks(tr_webseed_task* task)
     }
 }
 
-/***
-****
-***/
+// ---
 
 void onBufferGotData(evbuffer* /*buf*/, evbuffer_cb_info const* info, void* vtask)
 {
@@ -537,9 +533,7 @@ void task_request_next_chunk(tr_webseed_task* task)
 
 } // namespace
 
-/***
-****
-***/
+// ---
 
 tr_peer* tr_webseedNew(tr_torrent* torrent, std::string_view url, tr_peer_callback callback, void* callback_data)
 {

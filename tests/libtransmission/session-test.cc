@@ -3,12 +3,12 @@
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
 
-#include "transmission.h"
+#include <libtransmission/transmission.h>
 
-#include "session-alt-speeds.h"
-#include "session-id.h"
-#include "session.h"
-#include "version.h"
+#include <libtransmission/session-alt-speeds.h>
+#include <libtransmission/session-id.h>
+#include <libtransmission/session.h>
+#include <libtransmission/version.h>
 
 #include "test-fixtures.h"
 
@@ -184,7 +184,7 @@ TEST_F(SessionTest, peerId)
         auto const buf = tr_peerIdInit();
 
         // confirm that it begins with peer_id_prefix
-        auto const peer_id = std::string_view(reinterpret_cast<char const*>(buf.data()), PEER_ID_LEN);
+        auto const peer_id = std::string_view{ reinterpret_cast<char const*>(buf.data()), std::size(buf) };
         EXPECT_EQ(peer_id_prefix, peer_id.substr(0, peer_id_prefix.size()));
 
         // confirm that its total is evenly divisible by 36

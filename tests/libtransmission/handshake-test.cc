@@ -10,12 +10,12 @@
 
 #include <event2/util.h>
 
-#include "transmission.h"
+#include <libtransmission/transmission.h>
 
-#include "handshake.h"
-#include "peer-io.h"
-#include "session.h" // tr_peerIdInit()
-#include "timer.h"
+#include <libtransmission/handshake.h>
+#include <libtransmission/peer-io.h>
+#include <libtransmission/session.h> // tr_peerIdInit()
+#include <libtransmission/timer.h>
 
 #include "test-fixtures.h"
 
@@ -238,7 +238,8 @@ TEST_F(HandshakeTest, incomingPlaintext)
     auto const res = runHandshake(&mediator, io);
 
     // check the results
-    EXPECT_TRUE(res);
+    EXPECT_TRUE(res.has_value());
+    assert(res.has_value());
     EXPECT_TRUE(res->is_connected);
     EXPECT_TRUE(res->read_anything_from_peer);
     EXPECT_EQ(io, res->io);
@@ -265,7 +266,8 @@ TEST_F(HandshakeTest, incomingPlaintextUnknownInfoHash)
     auto const res = runHandshake(&mediator, io);
 
     // check the results
-    EXPECT_TRUE(res);
+    EXPECT_TRUE(res.has_value());
+    assert(res.has_value());
     EXPECT_FALSE(res->is_connected);
     EXPECT_TRUE(res->read_anything_from_peer);
     EXPECT_EQ(io, res->io);
@@ -290,7 +292,8 @@ TEST_F(HandshakeTest, outgoingPlaintext)
     auto const res = runHandshake(&mediator, io);
 
     // check the results
-    EXPECT_TRUE(res);
+    EXPECT_TRUE(res.has_value());
+    assert(res.has_value());
     EXPECT_TRUE(res->is_connected);
     EXPECT_TRUE(res->read_anything_from_peer);
     EXPECT_EQ(io, res->io);
@@ -328,7 +331,8 @@ TEST_F(HandshakeTest, incomingEncrypted)
     auto const res = runHandshake(&mediator, io);
 
     // check the results
-    EXPECT_TRUE(res);
+    EXPECT_TRUE(res.has_value());
+    assert(res.has_value());
     EXPECT_TRUE(res->is_connected);
     EXPECT_TRUE(res->read_anything_from_peer);
     EXPECT_EQ(io, res->io);
@@ -365,7 +369,8 @@ TEST_F(HandshakeTest, incomingEncryptedUnknownInfoHash)
     auto const res = runHandshake(&mediator, io);
 
     // check the results
-    EXPECT_TRUE(res);
+    EXPECT_TRUE(res.has_value());
+    assert(res.has_value());
     EXPECT_FALSE(res->is_connected);
     EXPECT_TRUE(res->read_anything_from_peer);
     EXPECT_EQ(tr_sha1_digest_t{}, io->torrent_hash());
@@ -404,7 +409,8 @@ TEST_F(HandshakeTest, outgoingEncrypted)
     auto const res = runHandshake(&mediator, io, TR_ENCRYPTION_PREFERRED);
 
     // check the results
-    EXPECT_TRUE(res);
+    EXPECT_TRUE(res.has_value());
+    assert(res.has_value());
     EXPECT_TRUE(res->is_connected);
     EXPECT_TRUE(res->read_anything_from_peer);
     EXPECT_EQ(io, res->io);

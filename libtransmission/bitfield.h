@@ -73,7 +73,7 @@ public:
         return have_none_hint_ || (bit_count_ > 0 && true_count_ == 0);
     }
 
-    [[nodiscard]] bool test(size_t bit) const
+    [[nodiscard]] TR_CONSTEXPR20 bool test(size_t bit) const
     {
         return hasAll() || (!hasNone() && testFlag(bit));
     }
@@ -132,12 +132,20 @@ private:
 
     void ensureBitsAlloced(size_t n);
     [[nodiscard]] bool ensureNthBitAlloced(size_t nth);
-    void freeArray() noexcept;
 
-    void setTrueCount(size_t n) noexcept;
-    void rebuildTrueCount() noexcept;
+    void freeArray() noexcept
+    {
+        // move-assign to ensure the reserve memory is cleared
+        flags_ = std::vector<uint8_t>{};
+    }
+
     void incrementTrueCount(size_t inc) noexcept;
     void decrementTrueCount(size_t dec) noexcept;
+    void setTrueCount(size_t n) noexcept;
+    void rebuildTrueCount() noexcept
+    {
+        setTrueCount(countFlags());
+    }
 
     std::vector<uint8_t> flags_;
 

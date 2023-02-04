@@ -5,6 +5,7 @@
 
 #include <algorithm> // for std::find_if()
 #include <cerrno> // for errno, EAFNOSUPPORT
+#include <climits> // for CHAR_BIT
 #include <cstring> // for memset()
 #include <ctime>
 #include <future>
@@ -41,15 +42,17 @@
 #define logdbg(interned, msg) tr_logAddDebug(msg, (interned).sv())
 #define logtrace(interned, msg) tr_logAddTrace(msg, (interned).sv())
 
+namespace
+{
 using namespace std::literals;
 
 // size defined by bep15
 using tau_connection_t = uint64_t;
 using tau_transaction_t = uint32_t;
 
-static constexpr auto TauConnectionTtlSecs = time_t{ 45 };
+constexpr auto TauConnectionTtlSecs = time_t{ 45 };
 
-static auto tau_transaction_new()
+auto tau_transaction_new()
 {
     return tr_rand_obj<tau_transaction_t>();
 }
@@ -63,9 +66,7 @@ enum tau_action_t
     TAU_ACTION_ERROR = 3
 };
 
-/****
-*****  SCRAPE
-****/
+// --- SCRAPE
 
 struct tau_scrape_request
 {
@@ -84,8 +85,8 @@ struct tau_scrape_request
 
         // build the payload
         auto buf = libtransmission::Buffer{};
-        buf.addUint32(TAU_ACTION_SCRAPE);
-        buf.addUint32(transaction_id);
+        buf.add_uint32(TAU_ACTION_SCRAPE);
+        buf.add_uint32(transaction_id);
         for (int i = 0; i < in.info_hash_count; ++i)
         {
             buf.add(in.info_hash[i]);
@@ -129,21 +130,21 @@ struct tau_scrape_request
                 }
 
                 auto& row = response.rows[i];
-                row.seeders = buf.toUint32();
-                row.downloads = buf.toUint32();
-                row.leechers = buf.toUint32();
+                row.seeders = buf.to_uint32();
+                row.downloads = buf.to_uint32();
+                row.leechers = buf.to_uint32();
             }
 
             requestFinished();
         }
         else
         {
-            std::string const errmsg = action == TAU_ACTION_ERROR && !std::empty(buf) ? buf.toString() : _("Unknown error");
+            std::string const errmsg = action == TAU_ACTION_ERROR && !std::empty(buf) ? buf.to_string() : _("Unknown error");
             fail(true, false, errmsg);
         }
     }
 
-    [[nodiscard]] auto expiresAt() const noexcept
+    [[nodiscard]] constexpr auto expiresAt() const noexcept
     {
         return created_at_ + TR_SCRAPE_TIMEOUT_SEC.count();
     }
@@ -161,15 +162,16 @@ private:
     tr_scrape_response_func on_response_;
 };
 
-/****
-*****  ANNOUNCE
-****/
+// --- ANNOUNCE
 
 struct tau_announce_request
 {
     tau_announce_request(uint32_t announce_ip, tr_announce_request const& in, tr_announce_response_func on_response)
         : on_response_{ std::move(on_response) }
     {
+        // https://www.bittorrent.org/beps/bep_0015.html sets key size at 32 bits
+        static_assert(sizeof(tr_announce_request::key) * CHAR_BIT == 32);
+
         response.seeders = -1;
         response.leechers = -1;
         response.downloads = -1;
@@ -177,18 +179,18 @@ struct tau_announce_request
 
         // build the payload
         auto buf = libtransmission::Buffer{};
-        buf.addUint32(TAU_ACTION_ANNOUNCE);
-        buf.addUint32(transaction_id);
+        buf.add_uint32(TAU_ACTION_ANNOUNCE);
+        buf.add_uint32(transaction_id);
         buf.add(in.info_hash);
         buf.add(in.peer_id);
-        buf.addUint64(in.down);
-        buf.addUint64(in.leftUntilComplete);
-        buf.addUint64(in.up);
-        buf.addUint32(get_tau_announce_event(in.event));
-        buf.addUint32(announce_ip);
-        buf.addUint32(in.key);
-        buf.addUint32(in.numwant);
-        buf.addPort(in.port);
+        buf.add_uint64(in.down);
+        buf.add_uint64(in.leftUntilComplete);
+        buf.add_uint64(in.up);
+        buf.add_uint32(get_tau_announce_event(in.event));
+        buf.add_uint32(announce_ip);
+        buf.add_uint32(in.key);
+        buf.add_uint32(in.numwant);
+        buf.add_port(in.port);
         payload.insert(std::end(payload), std::begin(buf), std::end(buf));
     }
 
@@ -222,22 +224,22 @@ struct tau_announce_request
 
         if (action == TAU_ACTION_ANNOUNCE && buflen >= 3 * sizeof(uint32_t))
         {
-            response.interval = buf.toUint32();
-            response.leechers = buf.toUint32();
-            response.seeders = buf.toUint32();
+            response.interval = buf.to_uint32();
+            response.leechers = buf.to_uint32();
+            response.seeders = buf.to_uint32();
 
-            auto const contiguous = std::vector<std::byte>{ std::begin(buf), std::end(buf) };
-            response.pex = tr_pex::from_compact_ipv4(std::data(contiguous), std::size(contiguous), nullptr, 0);
+            auto const [bytes, n_bytes] = buf.pullup();
+            response.pex = tr_pex::from_compact_ipv4(bytes, n_bytes, nullptr, 0);
             requestFinished();
         }
         else
         {
-            std::string const errmsg = action == TAU_ACTION_ERROR && !std::empty(buf) ? buf.toString() : _("Unknown error");
+            std::string const errmsg = action == TAU_ACTION_ERROR && !std::empty(buf) ? buf.to_string() : _("Unknown error");
             fail(true, false, errmsg);
         }
     }
 
-    [[nodiscard]] auto expiresAt() const noexcept
+    [[nodiscard]] constexpr auto expiresAt() const noexcept
     {
         return created_at_ + TR_ANNOUNCE_TIMEOUT_SEC.count();
     }
@@ -283,9 +285,7 @@ private:
     tr_announce_response_func on_response_;
 };
 
-/****
-*****  TRACKER
-****/
+// --- TRACKER
 
 struct tau_tracker
 {
@@ -318,13 +318,13 @@ struct tau_tracker
 
         if (action == TAU_ACTION_CONNECT)
         {
-            this->connection_id = buf.toUint64();
+            this->connection_id = buf.to_uint64();
             this->connection_expiration_time = tr_time() + TauConnectionTtlSecs;
             logdbg(this->key, fmt::format("Got a new connection ID from tracker: {}", this->connection_id));
         }
         else if (action == TAU_ACTION_ERROR)
         {
-            std::string const errmsg = !std::empty(buf) ? buf.toString() : _("Connection failed");
+            std::string const errmsg = !std::empty(buf) ? buf.to_string() : _("Connection failed");
             logdbg(this->key, errmsg);
             this->failAll(true, false, errmsg);
         }
@@ -375,12 +375,12 @@ struct tau_tracker
             logtrace(this->key, fmt::format("Trying to connect. Transaction ID is {}", this->connection_transaction_id));
 
             auto buf = libtransmission::Buffer{};
-            buf.addUint64(0x41727101980LL);
-            buf.addUint32(TAU_ACTION_CONNECT);
-            buf.addUint32(this->connection_transaction_id);
+            buf.add_uint64(0x41727101980LL);
+            buf.add_uint32(TAU_ACTION_CONNECT);
+            buf.add_uint32(this->connection_transaction_id);
 
-            auto const contiguous = std::vector<std::byte>(std::begin(buf), std::end(buf));
-            this->sendto(std::data(contiguous), std::size(contiguous));
+            auto const [bytes, n_bytes] = buf.pullup();
+            this->sendto(bytes, n_bytes);
         }
 
         if (timeout_reqs)
@@ -537,11 +537,11 @@ private:
         logdbg(this->key, fmt::format("sending request w/connection id {}", this->connection_id));
 
         auto buf = libtransmission::Buffer{};
-        buf.addUint64(this->connection_id);
+        buf.add_uint64(this->connection_id);
         buf.add(payload, payload_len);
 
-        auto const contiguous = std::vector<std::byte>(std::begin(buf), std::end(buf));
-        this->sendto(std::data(contiguous), std::size(contiguous));
+        auto const [bytes, n_bytes] = buf.pullup();
+        this->sendto(bytes, n_bytes);
     }
 
 public:
@@ -569,9 +569,7 @@ private:
     static inline constexpr auto ConnectionRequestTtl = int{ 30 };
 };
 
-/****
-*****  SESSION
-****/
+// --- SESSION
 
 class tr_announcer_udp_impl final : public tr_announcer_udp
 {
@@ -628,7 +626,7 @@ public:
         // extract the action_id and see if it makes sense
         auto buf = libtransmission::Buffer{};
         buf.add(msg, msglen);
-        auto const action_id = static_cast<tau_action_t>(buf.toUint32());
+        auto const action_id = static_cast<tau_action_t>(buf.to_uint32());
 
         if (!isResponseMessage(action_id, msglen))
         {
@@ -636,7 +634,7 @@ public:
         }
 
         /* extract the transaction_id and look for a match */
-        tau_transaction_t const transaction_id = buf.toUint32();
+        tau_transaction_t const transaction_id = buf.to_uint32();
 
         for (auto& tracker : trackers_)
         {
@@ -746,6 +744,8 @@ private:
 
     Mediator& mediator_;
 };
+
+} // namespace
 
 std::unique_ptr<tr_announcer_udp> tr_announcer_udp::create(Mediator& mediator)
 {

@@ -9,6 +9,7 @@
 #error only libtransmission should #include this header.
 #endif
 
+#include <atomic>
 #include <string>
 #include <string_view>
 #include <utility> // for std::make_pair()
@@ -31,13 +32,29 @@ public:
     tr_peer_socket() = default;
     tr_peer_socket(tr_session const* session, tr_address const& address, tr_port port, tr_socket_t sock);
     tr_peer_socket(tr_address const& address, tr_port port, struct UTPSocket* const sock);
-    tr_peer_socket(tr_peer_socket&&) = default;
+    tr_peer_socket(tr_peer_socket&& s)
+    {
+        *this = std::move(s);
+    }
     tr_peer_socket(tr_peer_socket const&) = delete;
-    tr_peer_socket& operator=(tr_peer_socket&&) = default;
+    tr_peer_socket& operator=(tr_peer_socket&& s)
+    {
+        close();
+        handle = s.handle;
+        address_ = s.address_;
+        port_ = s.port_;
+        type_ = s.type_;
+        // invalidate s.type_, s.handle so s.close() won't break anything
+        s.type_ = Type::None;
+        s.handle = {};
+        return *this;
+    }
     tr_peer_socket& operator=(tr_peer_socket const&) = delete;
-    ~tr_peer_socket() = default;
-
-    void close(tr_session* session);
+    ~tr_peer_socket()
+    {
+        close();
+    }
+    void close();
 
     size_t try_write(Buffer& buf, size_t max, tr_error** error) const;
     size_t try_read(Buffer& buf, size_t max, tr_error** error) const;
@@ -124,6 +141,8 @@ public:
         struct UTPSocket* utp;
     } handle = {};
 
+    [[nodiscard]] static bool limit_reached(tr_session* const session) noexcept;
+
 private:
     enum class Type
     {
@@ -136,6 +155,8 @@ private:
     tr_port port_;
 
     enum Type type_ = Type::None;
+
+    static inline std::atomic<size_t> n_open_sockets_ = {};
 };
 
 tr_peer_socket tr_netOpenPeerSocket(tr_session* session, tr_address const& addr, tr_port port, bool client_is_seed);

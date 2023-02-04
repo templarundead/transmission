@@ -50,7 +50,7 @@ std::string tr_net_strerror(int err)
 #ifdef _WIN32
 
     auto buf = std::array<char, 512>{};
-    auto const len = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, 0, std::data(buf), std::size(buf), nullptr);
+    (void)FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, 0, std::data(buf), std::size(buf), nullptr);
     return std::string{ tr_strvStrip(std::data(buf)) };
 
 #else
@@ -60,9 +60,7 @@ std::string tr_net_strerror(int err)
 #endif
 }
 
-/***********************************************************************
- * TCP sockets
- **********************************************************************/
+// - TCP Sockets
 
 [[nodiscard]] std::optional<tr_tos_t> tr_tos_t::from_string(std::string_view name)
 {
@@ -142,10 +140,8 @@ void tr_netSetCongestionControl([[maybe_unused]] tr_socket_t s, [[maybe_unused]]
 #endif
 }
 
-static tr_socket_t createSocket(tr_session* session, int domain, int type)
+static tr_socket_t createSocket(int domain, int type)
 {
-    TR_ASSERT(session != nullptr);
-
     auto const sockfd = socket(domain, type, 0);
     if (sockfd == TR_BAD_SOCKET)
     {
@@ -160,9 +156,9 @@ static tr_socket_t createSocket(tr_session* session, int domain, int type)
         return TR_BAD_SOCKET;
     }
 
-    if ((evutil_make_socket_nonblocking(sockfd) == -1) || !session->incPeerCount())
+    if (evutil_make_socket_nonblocking(sockfd) == -1)
     {
-        tr_netClose(session, sockfd);
+        tr_net_close_socket(sockfd);
         return TR_BAD_SOCKET;
     }
 
@@ -193,19 +189,15 @@ static tr_socket_t createSocket(tr_session* session, int domain, int type)
 tr_peer_socket tr_netOpenPeerSocket(tr_session* session, tr_address const& addr, tr_port port, bool client_is_seed)
 {
     TR_ASSERT(addr.is_valid());
+    TR_ASSERT(!tr_peer_socket::limit_reached(session));
 
-    if (!session->allowsTCP())
-    {
-        return {};
-    }
-
-    if (!addr.is_valid_for_peers(port))
+    if (tr_peer_socket::limit_reached(session) || !session->allowsTCP() || !addr.is_valid_for_peers(port))
     {
         return {};
     }
 
     static auto constexpr Domains = std::array<int, NUM_TR_AF_INET_TYPES>{ AF_INET, AF_INET6 };
-    auto const s = createSocket(session, Domains[addr.type], SOCK_STREAM);
+    auto const s = createSocket(Domains[addr.type], SOCK_STREAM);
     if (s == TR_BAD_SOCKET)
     {
         return {};
@@ -236,7 +228,7 @@ tr_peer_socket tr_netOpenPeerSocket(tr_session* session, tr_address const& addr,
             fmt::arg("socket", s),
             fmt::arg("error", tr_net_strerror(sockerrno)),
             fmt::arg("error_code", sockerrno)));
-        tr_netClose(session, s);
+        tr_net_close_socket(s);
         return {};
     }
 
@@ -247,7 +239,8 @@ tr_peer_socket tr_netOpenPeerSocket(tr_session* session, tr_address const& addr,
 #endif
         sockerrno != EINPROGRESS)
     {
-        if (auto const tmperrno = sockerrno; (tmperrno != ENETUNREACH && tmperrno != EHOSTUNREACH) || addr.is_ipv4())
+        if (auto const tmperrno = sockerrno;
+            (tmperrno != ECONNREFUSED && tmperrno != ENETUNREACH && tmperrno != EHOSTUNREACH) || addr.is_ipv4())
         {
             tr_logAddWarn(fmt::format(
                 _("Couldn't connect socket {socket} to {address}:{port}: {error} ({error_code})"),
@@ -258,7 +251,7 @@ tr_peer_socket tr_netOpenPeerSocket(tr_session* session, tr_address const& addr,
                 fmt::arg("error_code", tmperrno)));
         }
 
-        tr_netClose(session, s);
+        tr_net_close_socket(s);
     }
     else
     {
@@ -286,7 +279,7 @@ static tr_socket_t tr_netBindTCPImpl(tr_address const& addr, tr_port port, bool 
     if (evutil_make_socket_nonblocking(fd) == -1)
     {
         *err_out = sockerrno;
-        tr_netCloseSocket(fd);
+        tr_net_close_socket(fd);
         return TR_BAD_SOCKET;
     }
 
@@ -301,7 +294,7 @@ static tr_socket_t tr_netBindTCPImpl(tr_address const& addr, tr_port port, bool 
         (sockerrno != ENOPROTOOPT)) // if the kernel doesn't support it, ignore it
     {
         *err_out = sockerrno;
-        tr_netCloseSocket(fd);
+        tr_net_close_socket(fd);
         return TR_BAD_SOCKET;
     }
 
@@ -309,7 +302,7 @@ static tr_socket_t tr_netBindTCPImpl(tr_address const& addr, tr_port port, bool 
 
     auto const [sock, addrlen] = addr.to_sockaddr(port);
 
-    if (bind(fd, (struct sockaddr*)&sock, addrlen) == -1)
+    if (bind(fd, reinterpret_cast<sockaddr const*>(&sock), addrlen) == -1)
     {
         int const err = sockerrno;
 
@@ -325,7 +318,7 @@ static tr_socket_t tr_netBindTCPImpl(tr_address const& addr, tr_port port, bool 
                 fmt::arg("error_code", err)));
         }
 
-        tr_netCloseSocket(fd);
+        tr_net_close_socket(fd);
         *err_out = err;
         return TR_BAD_SOCKET;
     }
@@ -354,7 +347,7 @@ static tr_socket_t tr_netBindTCPImpl(tr_address const& addr, tr_port port, bool 
 #endif /* _WIN32 */
     {
         *err_out = sockerrno;
-        tr_netCloseSocket(fd);
+        tr_net_close_socket(fd);
         return TR_BAD_SOCKET;
     }
 
@@ -384,7 +377,7 @@ bool tr_net_hasIPv6(tr_port port)
 
         if (fd != TR_BAD_SOCKET)
         {
-            tr_netCloseSocket(fd);
+            tr_net_close_socket(fd);
         }
 
         already_done = true;
@@ -400,7 +393,7 @@ std::optional<std::tuple<tr_address, tr_port, tr_socket_t>> tr_netAccept(tr_sess
     // accept the incoming connection
     auto sock = sockaddr_storage{};
     socklen_t len = sizeof(struct sockaddr_storage);
-    auto const sockfd = accept(listening_sockfd, (struct sockaddr*)&sock, &len);
+    auto const sockfd = accept(listening_sockfd, reinterpret_cast<sockaddr*>(&sock), &len);
     if (sockfd == TR_BAD_SOCKET)
     {
         return {};
@@ -410,26 +403,22 @@ std::optional<std::tuple<tr_address, tr_port, tr_socket_t>> tr_netAccept(tr_sess
     // make the socket unblocking,
     // and confirm we don't have too many peers
     auto const addrport = tr_address::from_sockaddr(reinterpret_cast<struct sockaddr*>(&sock));
-    if (!addrport || evutil_make_socket_nonblocking(sockfd) == -1 || !session->incPeerCount())
+    if (!addrport || evutil_make_socket_nonblocking(sockfd) == -1 || tr_peer_socket::limit_reached(session))
     {
-        tr_netCloseSocket(sockfd);
+        tr_net_close_socket(sockfd);
         return {};
     }
 
     return std::make_tuple(addrport->first, addrport->second, sockfd);
 }
 
-void tr_netCloseSocket(tr_socket_t sockfd)
+void tr_net_close_socket(tr_socket_t sockfd)
 {
     evutil_closesocket(sockfd);
 }
 
-void tr_netClose(tr_session* session, tr_socket_t sockfd)
+namespace
 {
-    tr_netCloseSocket(sockfd);
-    session->decPeerCount();
-}
-
 // code in global_ipv6_herlpers is written by Juliusz Chroboczek
 // and is covered under the same license as dht.cc.
 // Please feel free to copy them into your software if it can help
@@ -458,6 +447,7 @@ namespace global_ipv6_helpers
             {
                 if (auto const addrport = tr_address::from_sockaddr(reinterpret_cast<sockaddr*>(&src_ss)); addrport)
                 {
+                    evutil_closesocket(sock);
                     errno = save;
                     return addrport->first;
                 }
@@ -471,7 +461,7 @@ namespace global_ipv6_helpers
     return {};
 }
 
-[[nodiscard]] auto global_address(int af)
+[[nodiscard]] std::optional<tr_address> global_address(int af)
 {
     // Pick some destination address to pretend to send a packet to
     static auto constexpr DstIPv4 = "91.121.74.28"sv;
@@ -481,14 +471,21 @@ namespace global_ipv6_helpers
 
     // In order for address selection to work right,
     // this should be a native IPv6 address, not Teredo or 6to4
-    TR_ASSERT(dst_addr.has_value());
-    TR_ASSERT(dst_addr->is_global_unicast_address());
+    TR_ASSERT(dst_addr.has_value() && dst_addr->is_global_unicast_address());
 
-    auto src_addr = get_source_address(*dst_addr, dst_port);
-    return src_addr && src_addr->is_global_unicast_address() ? *src_addr : std::optional<tr_address>{};
+    if (dst_addr)
+    {
+        if (auto addr = get_source_address(*dst_addr, dst_port); addr && addr->is_global_unicast_address())
+        {
+            return addr;
+        }
+    }
+
+    return {};
 }
 
 } // namespace global_ipv6_helpers
+} // namespace
 
 /* Return our global IPv6 address, with caching. */
 std::optional<tr_address> tr_globalIPv6()
@@ -508,8 +505,10 @@ std::optional<tr_address> tr_globalIPv6()
     return cache_val;
 }
 
-///
+// ---
 
+namespace
+{
 namespace is_valid_for_peers_helpers
 {
 
@@ -533,13 +532,13 @@ namespace is_valid_for_peers_helpers
     {
     case TR_AF_INET:
         {
-            auto const* const address = (unsigned char const*)&addr.addr.addr4;
+            auto const* const address = reinterpret_cast<unsigned char const*>(&addr.addr.addr4);
             return address[0] == 0 || address[0] == 127 || (address[0] & 0xE0) == 0xE0;
         }
 
     case TR_AF_INET6:
         {
-            auto const* const address = (unsigned char const*)&addr.addr.addr6;
+            auto const* const address = reinterpret_cast<unsigned char const*>(&addr.addr.addr6);
             return address[0] == 0xFF ||
                 (memcmp(address, std::data(Zeroes), 15) == 0 && (address[15] == 0 || address[15] == 1));
         }
@@ -550,6 +549,7 @@ namespace is_valid_for_peers_helpers
 }
 
 } // namespace is_valid_for_peers_helpers
+} // namespace
 
 bool tr_address::is_valid_for_peers(tr_port port) const noexcept
 {
@@ -559,7 +559,7 @@ bool tr_address::is_valid_for_peers(tr_port port) const noexcept
         !is_martian_addr(*this);
 }
 
-/// tr_port
+// --- tr_port
 
 std::pair<tr_port, std::byte const*> tr_port::fromCompact(std::byte const* compact) noexcept
 {
@@ -573,7 +573,7 @@ std::pair<tr_port, std::byte const*> tr_port::fromCompact(std::byte const* compa
     return std::make_pair(tr_port::fromNetwork(nport), compact);
 }
 
-/// tr_address
+// --- tr_address
 
 std::optional<tr_address> tr_address::from_string(std::string_view address_sv)
 {
@@ -701,21 +701,16 @@ std::pair<sockaddr_storage, socklen_t> tr_address::to_sockaddr(tr_port port) con
     return { ss, sizeof(sockaddr_in6) };
 }
 
-static int tr_address_compare(tr_address const* a, tr_address const* b) noexcept // <=>
-{
-    // IPv6 addresses are always "greater than" IPv4
-    if (a->type != b->type)
-    {
-        return a->is_ipv4() ? 1 : -1;
-    }
-
-    return a->is_ipv4() ? memcmp(&a->addr.addr4, &b->addr.addr4, sizeof(a->addr.addr4)) :
-                          memcmp(&a->addr.addr6.s6_addr, &b->addr.addr6.s6_addr, sizeof(a->addr.addr6.s6_addr));
-}
-
 int tr_address::compare(tr_address const& that) const noexcept // <=>
 {
-    return tr_address_compare(this, &that);
+    // IPv6 addresses are always "greater than" IPv4
+    if (this->type != that.type)
+    {
+        return this->is_ipv4() ? 1 : -1;
+    }
+
+    return this->is_ipv4() ? memcmp(&this->addr.addr4, &that.addr.addr4, sizeof(this->addr.addr4)) :
+                             memcmp(&this->addr.addr6.s6_addr, &that.addr.addr6.s6_addr, sizeof(this->addr.addr6.s6_addr));
 }
 
 // https://en.wikipedia.org/wiki/Reserved_IP_addresses

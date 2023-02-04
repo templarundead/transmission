@@ -86,7 +86,7 @@ private:
     {
     public:
         using IncomingCallback = void (*)(tr_socket_t, void*);
-        BoundSocket(struct event_base*, tr_address const& addr, tr_port port, IncomingCallback cb, void* cb_data);
+        BoundSocket(struct event_base* base, tr_address const& addr, tr_port port, IncomingCallback cb, void* cb_data);
         BoundSocket(BoundSocket&&) = delete;
         BoundSocket(BoundSocket const&) = delete;
         BoundSocket operator=(BoundSocket&&) = delete;
@@ -281,7 +281,7 @@ private:
         tr_udp_core(tr_session& session, tr_port udp_port);
         ~tr_udp_core();
 
-        void sendto(void const* buf, size_t buflen, struct sockaddr const* to, socklen_t const tolen) const;
+        void sendto(void const* buf, size_t buflen, struct sockaddr const* to, socklen_t tolen) const;
 
         [[nodiscard]] constexpr auto socket4() const noexcept
         {
@@ -464,11 +464,6 @@ public:
 
     [[nodiscard]] bool useRpcWhitelist() const;
 
-    [[nodiscard]] constexpr auto externalIP() const noexcept
-    {
-        return external_ip_;
-    }
-
     void setExternalIP(tr_address external_ip)
     {
         external_ip_ = external_ip;
@@ -499,25 +494,6 @@ public:
     [[nodiscard]] constexpr auto peerLimitPerTorrent() const noexcept
     {
         return settings_.peer_limit_per_torrent;
-    }
-
-    [[nodiscard]] constexpr bool incPeerCount() noexcept
-    {
-        if (this->peer_count_ >= this->peerLimit())
-        {
-            return false;
-        }
-
-        ++this->peer_count_;
-        return true;
-    }
-
-    constexpr void decPeerCount() noexcept
-    {
-        if (this->peer_count_ > 0)
-        {
-            --this->peer_count_;
-        }
     }
 
     // bandwidth
@@ -731,6 +707,11 @@ public:
         return !settings_.should_start_added_torrents;
     }
 
+    [[nodiscard]] constexpr auto shouldFullyVerifyAddedTorrents() const noexcept
+    {
+        return settings_.torrent_added_verify_mode == TR_VERIFY_ADDED_FULL;
+    }
+
     [[nodiscard]] constexpr auto shouldDeleteSource() const noexcept
     {
         return settings_.should_delete_source_torrents;
@@ -864,7 +845,10 @@ public:
 
     void fetch(tr_web::FetchOptions&& options) const
     {
-        web_->fetch(std::move(options));
+        if (web_)
+        {
+            web_->fetch(std::move(options));
+        }
     }
 
     [[nodiscard]] constexpr auto const& bandwidthGroups() const noexcept
@@ -1063,8 +1047,6 @@ private:
     // e.g. if the public device is a router that chose to use a different
     // port than the one requested by Transmission.
     tr_port advertised_peer_port_;
-
-    uint16_t peer_count_ = 0;
 
     bool is_closing_ = false;
 
