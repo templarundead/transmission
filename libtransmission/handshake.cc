@@ -185,7 +185,7 @@ ReadState tr_handshake::read_yb(tr_peerIo* peer_io)
 
     /* now send these: HASH('req1', S), HASH('req2', SKEY) xor HASH('req3', S),
      * ENCRYPT(VC, crypto_provide, len(PadC), PadC, len(IA)), ENCRYPT(IA) */
-    auto outbuf = libtransmission::SmallBuffer<4096>{};
+    auto outbuf = libtransmission::Buffer{};
 
     /* HASH('req1', S) */
     outbuf.add(tr_sha1::digest("req1"sv, dh_.secret()));
@@ -521,9 +521,8 @@ ReadState tr_handshake::read_crypto_provide(tr_peerIo* peer_io)
 
     if (auto const info = mediator_->torrent_from_obfuscated(obfuscated_hash); info)
     {
-        auto const& [addr, port] = peer_io->socket_address();
         bool const client_is_seed = info->is_done;
-        bool const peer_is_seed = mediator_->is_peer_known_seed(info->id, addr, port);
+        bool const peer_is_seed = mediator_->is_peer_known_seed(info->id, peer_io->socket_address());
         tr_logAddTraceHand(this, fmt::format("got INCOMING connection's encrypted handshake for torrent [{}]", info->id));
         peer_io->set_torrent_hash(info->info_hash);
 
@@ -601,7 +600,7 @@ ReadState tr_handshake::read_ia(tr_peerIo* peer_io)
     auto const& info_hash = peer_io->torrent_hash();
     TR_ASSERT_MSG(info_hash != tr_sha1_digest_t{}, "readIA requires an info_hash");
     peer_io->encrypt_init(peer_io->is_incoming(), dh_, info_hash);
-    auto outbuf = libtransmission::SmallBuffer<4096>{};
+    auto outbuf = libtransmission::Buffer{};
 
     // send VC
     tr_logAddTraceHand(this, "sending vc");
@@ -789,8 +788,7 @@ void tr_handshake::on_error(tr_peerIo* io, tr_error const& error, void* vhandsha
         /* Don't mark a peer as non-µTP unless it's really a connect failure. */
         if ((error.code == ETIMEDOUT || error.code == ECONNREFUSED) && info)
         {
-            auto const& [addr, port] = io->socket_address();
-            handshake->mediator_->set_utp_failed(info_hash, addr, port);
+            handshake->mediator_->set_utp_failed(info_hash, io->socket_address());
         }
 
         if (handshake->mediator_->allows_tcp() && io->reconnect())
