@@ -105,7 +105,7 @@ void logAddImpl(
 
 #else
 
-    if (tr_logGetQueueEnabled())
+    if (log_state.queue_enabled_)
     {
         auto* const newmsg = new tr_log_message{};
         newmsg->level = level;
@@ -169,11 +169,6 @@ void tr_logSetLevel(tr_log_level level)
 void tr_logSetQueueEnabled(bool is_enabled)
 {
     log_state.queue_enabled_ = is_enabled;
-}
-
-bool tr_logGetQueueEnabled()
-{
-    return log_state.queue_enabled_;
 }
 
 tr_log_message* tr_logGetQueue()
@@ -308,7 +303,7 @@ static_assert(keysAreOrdered());
 
 std::optional<tr_log_level> tr_logGetLevelFromKey(std::string_view key_in)
 {
-    auto const key = tr_strlower(tr_strvStrip(key_in));
+    auto const key = tr_strlower(tr_strv_strip(key_in));
 
     for (auto const& [name, level] : LogKeys)
     {
