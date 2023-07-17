@@ -651,7 +651,7 @@ jobs:
     env:
       NODE_PATH: /usr/lib/nodejs:/usr/share/nodejs
     container:
-      image: fedora:36
+      image: fedora:39
     steps:
       - name: Show Configuration
         run: |
