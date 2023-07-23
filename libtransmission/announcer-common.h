@@ -1,4 +1,4 @@
-// This file Copyright © 2010-2022 Mnemosyne LLC.
+// This file Copyright © 2010-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -12,18 +12,17 @@
 #include <array>
 #include <chrono>
 #include <cstdint> // uint64_t
-#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include "transmission.h"
+#include "libtransmission/transmission.h"
 
-#include "announcer.h"
-#include "interned-string.h"
-#include "net.h"
-#include "peer-mgr.h" // tr_pex
+#include "libtransmission/announcer.h"
+#include "libtransmission/interned-string.h"
+#include "libtransmission/net.h"
+#include "libtransmission/peer-mgr.h" // tr_pex
 
 struct tr_url_parsed_t;
 

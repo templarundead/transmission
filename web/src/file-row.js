@@ -1,4 +1,4 @@
-/* @license This file Copyright (C) 2020-2022 Mnemosyne LLC.
+/* @license This file Copyright © 2020-2023 Mnemosyne LLC.
    It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
    or any future license endorsed by Mnemosyne LLC.
    License text can be found in the licenses/ folder. */
@@ -33,7 +33,7 @@ export class FileRow extends EventTarget {
     const pct = 100 * (size ? have / size : 1);
     const fmt = Formatter;
     const c = `${fmt.size(have)} of ${fmt.size(size)} (${fmt.percentString(
-      pct
+      pct,
     )}%)`;
     setTextContent(this.elements.progress, c);
   }
@@ -100,7 +100,7 @@ export class FileRow extends EventTarget {
     const root = document.createElement('li');
     root.classList.add(
       'inspector-torrent-file-list-entry',
-      even ? 'even' : 'odd'
+      even ? 'even' : 'odd',
     );
 
     this.elements.root = root;
@@ -112,7 +112,7 @@ export class FileRow extends EventTarget {
     e.title = 'Download file';
     e.id = check_id;
     e.addEventListener('change', (event_) =>
-      this.fireWantedChanged(event_.target.checked)
+      this.fireWantedChanged(event_.target.checked),
     );
     root.checkbox = e;
     root.append(e);

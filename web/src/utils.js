@@ -1,4 +1,4 @@
-/* @license This file Copyright (C) 2020-2022 Mnemosyne LLC.
+/* @license This file Copyright © 2020-2023 Mnemosyne LLC.
    It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
    or any future license endorsed by Mnemosyne LLC.
    License text can be found in the licenses/ folder. */
@@ -80,7 +80,7 @@ export function createTextualTabsContainer(id, tabs, callback) {
     pages.append(page);
 
     button.addEventListener('click', () =>
-      toggleClass(buttons, button, pages, page, callback)
+      toggleClass(buttons, button, pages, page, callback),
     );
   }
 
@@ -119,7 +119,7 @@ export function createTabsContainer(id, tabs, callback) {
     pages.append(page);
 
     button.addEventListener('click', () =>
-      toggleClass(buttons, button, pages, page, callback)
+      toggleClass(buttons, button, pages, page, callback),
     );
   }
 
@@ -191,11 +191,11 @@ export function createDialogContainer(id) {
 
 export function makeUUID() {
   // source: https://stackoverflow.com/a/2117523/6568470
-  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replaceAll(/[018]/g, (c) =>
     (
       c ^
       (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
-    ).toString(16)
+    ).toString(16),
   );
 }
 
@@ -240,7 +240,7 @@ export function debounce(callback, wait = 100) {
     if (!timeout) {
       timeout = setTimeout(() => {
         timeout = null;
-        callback(arguments_);
+        callback(...arguments_);
       }, wait);
     }
   };
@@ -291,7 +291,7 @@ export function movePopup(popup, x, y, boundingElement) {
   const initial_pos = new DOMRect(x, y, popup.clientWidth, popup.clientHeight);
   const clamped_pos = getBestMenuPos(
     initial_pos,
-    boundingElement.getBoundingClientRect()
+    boundingElement.getBoundingClientRect(),
   );
   popup.style.left = `${clamped_pos.left}px`;
   popup.style.top = `${clamped_pos.top}px`;

@@ -1,15 +1,15 @@
-// This file Copyright © 2009-2022 Mnemosyne LLC.
+// This file Copyright © 2009-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <unordered_set>
 
 #include <QString>
-#include <QMap>
 #include <QSet>
 #include <QTimer>
 
@@ -46,7 +46,7 @@ public:
     // QWidget
     QSize sizeHint() const override
     {
-        return QSize(440, 460);
+        return QSize{ 440, 460 };
     }
 
 private:
@@ -137,7 +137,7 @@ private:
     std::shared_ptr<TrackerModelFilter> tracker_filter_;
     std::shared_ptr<TrackerDelegate> tracker_delegate_;
 
-    QMap<QString, QTreeWidgetItem*> peers_;
+    std::map<QString, QTreeWidgetItem*> peers_;
 
     QIcon const icon_encrypted_ = QIcon(QStringLiteral(":/icons/encrypted.svg"));
     QIcon const icon_unencrypted_ = {};

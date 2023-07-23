@@ -1,4 +1,4 @@
-// This file Copyright © 2009-2022 Mnemosyne LLC.
+// This file Copyright © 2009-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -52,21 +52,25 @@ void Session::sessionSet(tr_quark const key, QVariant const& value)
     tr_variant args;
     tr_variantInitDict(&args, 1);
 
-    switch (value.type())
+#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+    switch (value.typeId())
+#else
+    switch (static_cast<QMetaType::Type>(value.type()))
+#endif
     {
-    case QVariant::Bool:
+    case QMetaType::Bool:
         dictAdd(&args, key, value.toBool());
         break;
 
-    case QVariant::Int:
+    case QMetaType::Int:
         dictAdd(&args, key, value.toInt());
         break;
 
-    case QVariant::Double:
+    case QMetaType::Double:
         dictAdd(&args, key, value.toDouble());
         break;
 
-    case QVariant::String:
+    case QMetaType::QString:
         dictAdd(&args, key, value.toString());
         break;
 
@@ -79,7 +83,7 @@ void Session::sessionSet(tr_quark const key, QVariant const& value)
 
 void Session::portTest()
 {
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add([this]() { return exec("port-test", nullptr); });
 
@@ -113,7 +117,7 @@ void Session::copyMagnetLinkToClipboard(int torrent_id)
     dictAdd(&args, TR_KEY_ids, std::array<int, 1>{ torrent_id });
     dictAdd(&args, TR_KEY_fields, Fields);
 
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add([this, &args]() { return exec(TR_KEY_torrent_get, &args); });
 
@@ -286,8 +290,8 @@ void Session::updatePref(int key)
 ***/
 
 Session::Session(QString config_dir, Prefs& prefs)
-    : config_dir_(std::move(config_dir))
-    , prefs_(prefs)
+    : config_dir_{ std::move(config_dir) }
+    , prefs_{ prefs }
 {
     connect(&prefs_, &Prefs::changed, this, &Session::updatePref);
     connect(&rpc_, &RpcClient::httpAuthenticationRequired, this, &Session::httpAuthenticationRequired);
@@ -403,7 +407,7 @@ void Session::addOptionalIds(tr_variant* args_dict, torrent_ids_t const& torrent
 
 Session::Tag Session::torrentSetImpl(tr_variant* args)
 {
-    auto* const q = new RpcQueue();
+    auto* const q = new RpcQueue{};
     auto const tag = q->tag();
 
     q->add([this, args]() { return rpc_.exec(TR_KEY_torrent_set, args); });
@@ -487,7 +491,7 @@ void Session::torrentRenamePath(torrent_ids_t const& torrent_ids, QString const&
     dictAdd(&args, TR_KEY_path, oldpath);
     dictAdd(&args, TR_KEY_name, newname);
 
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add(
         [this, &args]() { return exec("torrent-rename-path", &args); },
@@ -496,7 +500,7 @@ void Session::torrentRenamePath(torrent_ids_t const& torrent_ids, QString const&
             auto const path = dictFind<QString>(r.args.get(), TR_KEY_path).value_or(QStringLiteral("(unknown)"));
             auto const name = dictFind<QString>(r.args.get(), TR_KEY_name).value_or(QStringLiteral("(unknown)"));
 
-            auto* d = new QMessageBox(
+            auto* d = new QMessageBox{
                 QMessageBox::Information,
                 tr("Error Renaming Path"),
                 tr(R"(<p><b>Unable to rename "%1" as "%2": %3.</b></p><p>Please correct the errors and try again.</p>)")
@@ -504,7 +508,8 @@ void Session::torrentRenamePath(torrent_ids_t const& torrent_ids, QString const&
                     .arg(name)
                     .arg(r.result),
                 QMessageBox::Close,
-                QApplication::activeWindow());
+                QApplication::activeWindow()
+            };
             QObject::connect(d, &QMessageBox::rejected, d, &QMessageBox::deleteLater);
             d->show();
         });
@@ -657,7 +662,7 @@ void Session::refreshTorrents(torrent_ids_t const& torrent_ids, TorrentPropertie
     dictAdd(&args, TR_KEY_fields, getKeyNames(props));
     addOptionalIds(&args, torrent_ids);
 
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add([this, &args]() { return exec(TR_KEY_torrent_get, &args); });
 
@@ -698,7 +703,7 @@ void Session::sendTorrentRequest(std::string_view request, torrent_ids_t const& 
     tr_variantInitDict(&args, 1);
     addOptionalIds(&args, torrent_ids);
 
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add([this, request, &args]() { return exec(request, &args); });
 
@@ -762,7 +767,7 @@ void Session::initTorrents(torrent_ids_t const& ids)
 
 void Session::refreshSessionStats()
 {
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add([this]() { return exec("session-stats", nullptr); });
 
@@ -773,7 +778,7 @@ void Session::refreshSessionStats()
 
 void Session::refreshSessionInfo()
 {
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add([this]() { return exec("session-get", nullptr); });
 
@@ -784,7 +789,7 @@ void Session::refreshSessionInfo()
 
 void Session::updateBlocklist()
 {
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add([this]() { return exec("blocklist-update", nullptr); });
 
@@ -895,7 +900,7 @@ void Session::updateInfo(tr_variant* args_dict)
 
         switch (prefs_.type(i))
         {
-        case QVariant::Int:
+        case QMetaType::Int:
             if (auto const value = getValue<int>(b); value)
             {
                 prefs_.set(i, *value);
@@ -903,7 +908,7 @@ void Session::updateInfo(tr_variant* args_dict)
 
             break;
 
-        case QVariant::Double:
+        case QMetaType::Double:
             if (auto const value = getValue<double>(b); value)
             {
                 prefs_.set(i, *value);
@@ -911,7 +916,7 @@ void Session::updateInfo(tr_variant* args_dict)
 
             break;
 
-        case QVariant::Bool:
+        case QMetaType::Bool:
             if (auto const value = getValue<bool>(b); value)
             {
                 prefs_.set(i, *value);
@@ -921,7 +926,7 @@ void Session::updateInfo(tr_variant* args_dict)
 
         case CustomVariantType::FilterModeType:
         case CustomVariantType::SortModeType:
-        case QVariant::String:
+        case QMetaType::QString:
             if (auto const value = getValue<QString>(b); value)
             {
                 prefs_.set(i, *value);
@@ -969,7 +974,7 @@ void Session::updateInfo(tr_variant* args_dict)
     if (auto const str = dictFind<QString>(args_dict, TR_KEY_session_id); str)
     {
         session_id_ = *str;
-        is_definitely_local_session_ = tr_session_id::isLocal(session_id_.toUtf8().constData());
+        is_definitely_local_session_ = tr_session_id::is_local(session_id_.toUtf8().constData());
     }
     else
     {
@@ -1019,24 +1024,23 @@ void Session::addTorrent(AddData add_me, tr_variant* args_dict, bool trash_origi
         break;
     }
 
-    auto* q = new RpcQueue();
+    auto* q = new RpcQueue{};
 
     q->add(
         [this, args_dict]() { return exec("torrent-add", args_dict); },
         [add_me](RpcResponse const& r)
         {
-            auto* d = new QMessageBox(
-                QMessageBox::Warning,
-                tr("Error Adding Torrent"),
-                QStringLiteral("<p><b>%1</b></p><p>%2</p>").arg(r.result).arg(add_me.readableName()),
-                QMessageBox::Close,
-                QApplication::activeWindow());
+            auto* d = new QMessageBox{ QMessageBox::Warning,
+                                       tr("Error Adding Torrent"),
+                                       QStringLiteral("<p><b>%1</b></p><p>%2</p>").arg(r.result).arg(add_me.readableName()),
+                                       QMessageBox::Close,
+                                       QApplication::activeWindow() };
             QObject::connect(d, &QMessageBox::rejected, d, &QMessageBox::deleteLater);
             d->show();
         });
 
     q->add(
-        [this, add_me](RpcResponse const& r)
+        [this, add_me, trash_original](RpcResponse const& r)
         {
             bool session_has_torrent = false;
 
@@ -1056,22 +1060,22 @@ void Session::addTorrent(AddData add_me, tr_variant* args_dict, bool trash_origi
                 }
             }
 
-            if (session_has_torrent && !add_me.filename.isEmpty())
+            if (auto const& filename = add_me.filename;
+                session_has_torrent && !filename.isEmpty() && add_me.type == AddData::FILENAME)
             {
-                QFile(add_me.filename).rename(QStringLiteral("%1.added").arg(add_me.filename));
+                auto file = QFile{ filename };
+
+                if (trash_original)
+                {
+                    file.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+                    file.remove();
+                }
+                else
+                {
+                    file.rename(QStringLiteral("%1.added").arg(filename));
+                }
             }
         });
-
-    if (trash_original && add_me.type == AddData::FILENAME)
-    {
-        q->add(
-            [add_me]()
-            {
-                QFile original(add_me.filename);
-                original.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
-                original.remove();
-            });
-    }
 
     q->run();
 }
@@ -1096,7 +1100,7 @@ void Session::onDuplicatesTimer()
         auto const use_detail = lines.size() > 1;
         auto const text = use_detail ? detail_text : detail;
 
-        auto* d = new QMessageBox(QMessageBox::Warning, title, text, QMessageBox::Close, QApplication::activeWindow());
+        auto* d = new QMessageBox{ QMessageBox::Warning, title, text, QMessageBox::Close, QApplication::activeWindow() };
         if (use_detail)
         {
             d->setDetailedText(detail);

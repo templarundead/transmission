@@ -1,4 +1,4 @@
-// This file Copyright © 2009-2022 Mnemosyne LLC.
+// This file Copyright © 2009-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -9,7 +9,9 @@
 #include <QPixmap>
 #include <QTextDocument>
 
-#include "FaviconCache.h"
+#include <libtransmission/web-utils.h>
+#include <libtransmission/favicon-cache.h>
+
 #include "Formatter.h"
 #include "Torrent.h"
 #include "TrackerDelegate.h"
@@ -56,9 +58,9 @@ ItemLayout::ItemLayout(
     QPoint const& top_left,
     int width)
 {
-    QSize const icon_size = FaviconCache::getIconSize();
+    auto const icon_size = QSize{ FaviconCache<QPixmap>::Width, FaviconCache<QPixmap>::Height };
 
-    QRect base_rect(top_left, QSize(width, 0));
+    QRect base_rect{ top_left, QSize{ width, 0 } };
 
     icon_rect = QStyle::alignedRect(direction, Qt::AlignLeft | Qt::AlignTop, icon_size, base_rect);
     Utils::narrowRect(base_rect, icon_size.width() + Spacing, 0, direction);
@@ -89,7 +91,7 @@ ItemLayout::ItemLayout(
 
 QSize TrackerDelegate::sizeHint(QStyleOptionViewItem const& option, TrackerInfo const& info) const
 {
-    ItemLayout const layout(getText(info), true, option.direction, QPoint(0, 0), option.rect.width() - Margin.width() * 2);
+    ItemLayout const layout{ getText(info), true, option.direction, QPoint(0, 0), option.rect.width() - Margin.width() * 2 };
     return layout.size() + Margin * 2;
 }
 
@@ -191,9 +193,13 @@ QString TrackerDelegate::getText(TrackerInfo const& inf) const
 
     // hostname
     str += inf.st.is_backup ? QStringLiteral("<i>") : QStringLiteral("<b>");
-    auto const url = QUrl(inf.st.announce);
-    str += QStringLiteral("%1:%2").arg(url.host()).arg(url.port(80));
-
+    auto const announce_url = inf.st.announce.toStdString();
+    if (auto const parsed = tr_urlParse(announce_url); parsed)
+    {
+        str += QStringLiteral("%1:%2")
+                   .arg(QString::fromUtf8(std::data(parsed->host), std::size(parsed->host)))
+                   .arg(parsed->port);
+    }
     str += inf.st.is_backup ? QStringLiteral("</i>") : QStringLiteral("</b>");
 
     // announce & scrape info

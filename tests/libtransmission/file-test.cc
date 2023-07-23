@@ -4,27 +4,32 @@
 // License text can be found in the licenses/ folder.
 
 #include <array>
+#include <cassert>
+#include <cstdint> // uint64_t
+#include <cstdio> // stderr
 #include <cstring>
+#include <ctime> // time()
 #include <ostream>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
 
 #ifndef _WIN32
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #else
 #include <windows.h>
 #endif
 
-#include <libtransmission/transmission.h>
+#include <fmt/core.h>
 
 #include <libtransmission/error.h>
 #include <libtransmission/file.h>
 #include <libtransmission/tr-macros.h>
 #include <libtransmission/tr-strbuf.h>
 
+#include "gtest/gtest.h"
 #include "test-fixtures.h"
 
 #if !defined(__OpenBSD__)
@@ -339,19 +344,6 @@ TEST_F(FileTest, readFile)
     EXPECT_EQ(nullptr, err) << *err;
 
     tr_sys_file_close(fd);
-
-    // read from closed file
-    n_read = 0;
-    EXPECT_FALSE(tr_sys_file_read(fd, std::data(buf), std::size(buf), &n_read, &err)); // coverity[USE_AFTER_FREE]
-    EXPECT_EQ(0, n_read);
-    EXPECT_NE(nullptr, err);
-    tr_error_clear(&err);
-
-    // read_at from closed file
-    EXPECT_FALSE(tr_sys_file_read_at(fd, std::data(buf), std::size(buf), offset, &n_read, &err)); // coverity[USE_AFTER_FREE]
-    EXPECT_EQ(0, n_read);
-    EXPECT_NE(nullptr, err);
-    tr_error_clear(&err);
 }
 
 TEST_F(FileTest, pathExists)

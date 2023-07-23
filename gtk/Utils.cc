@@ -1,4 +1,4 @@
-// This file Copyright © 2008-2022 Mnemosyne LLC.
+// This file Copyright © 2008-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -42,7 +42,6 @@
 
 #include <fmt/core.h>
 
-#include <array>
 #include <functional>
 #include <memory>
 #include <stack>
@@ -655,6 +654,13 @@ void gtr_widget_set_visible(Gtk::Widget& widget, bool is_visible)
 
         for (auto* const top_level_window : Gtk::Window::list_toplevels())
         {
+#if !GTKMM_CHECK_VERSION(4, 0, 0)
+            if (top_level_window->get_window_type() != Gtk::WINDOW_TOPLEVEL)
+            {
+                continue;
+            }
+#endif
+
             if (top_level_window->get_transient_for() != window || top_level_window->get_visible() == is_visible)
             {
                 continue;
@@ -771,7 +777,7 @@ void gtr_paste_clipboard_url_into_entry(Gtk::Entry& entry)
 {
     auto const process = [&entry](Glib::ustring const& text)
     {
-        if (auto const sv = tr_strvStrip(text.raw());
+        if (auto const sv = tr_strv_strip(text.raw());
             !sv.empty() && (tr_urlIsValid(sv) || tr_magnet_metainfo{}.parseMagnet(sv)))
         {
             entry.set_text(text);

@@ -1,4 +1,4 @@
-// This file Copyright © 2021-2022 Mnemosyne LLC.
+// This file Copyright © 2021-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -6,7 +6,8 @@
 #pragma once
 
 #include <chrono>
-#include <cstddef>
+#include <cstddef> // size_t
+#include <ctime> // time_t
 #include <functional>
 #include <memory>
 #include <optional>
@@ -156,7 +157,10 @@ public:
             func(response);
         }
 
-        [[nodiscard]] virtual time_t now() const = 0;
+        [[nodiscard]] virtual time_t now() const
+        {
+            return time(nullptr);
+        }
     };
 
     // Note that tr_web does no management of the `mediator` reference.

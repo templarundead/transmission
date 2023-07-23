@@ -1,4 +1,4 @@
-// This file Copyright © 2012-2022 Mnemosyne LLC.
+// This file Copyright © 2012-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -50,6 +50,7 @@ enum
     TR_KEY_availability, // rpc
     TR_KEY_bandwidth_priority,
     TR_KEY_bandwidthPriority,
+    TR_KEY_beginPiece,
     TR_KEY_bind_address_ipv4,
     TR_KEY_bind_address_ipv6,
     TR_KEY_bitfield,
@@ -111,6 +112,7 @@ enum
     TR_KEY_editDate,
     TR_KEY_encoding,
     TR_KEY_encryption,
+    TR_KEY_endPiece,
     TR_KEY_error,
     TR_KEY_errorString,
     TR_KEY_eta,
@@ -220,7 +222,6 @@ enum
     TR_KEY_paused,
     TR_KEY_pausedTorrentCount,
     TR_KEY_peer_congestion_algorithm,
-    TR_KEY_peer_id_ttl_hours,
     TR_KEY_peer_limit,
     TR_KEY_peer_limit_global,
     TR_KEY_peer_limit_per_torrent,
@@ -333,6 +334,7 @@ enum
     TR_KEY_seedRatioMode,
     TR_KEY_seederCount,
     TR_KEY_seeding_time_seconds,
+    TR_KEY_sequentialDownload,
     TR_KEY_session_count,
     TR_KEY_session_id,
     TR_KEY_sessionCount,

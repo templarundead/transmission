@@ -1,4 +1,4 @@
-// This file Copyright © 2008-2022 Mnemosyne LLC.
+// This file Copyright © 2008-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -23,7 +23,6 @@
 #include <gtkmm/window.h>
 
 #include <fmt/core.h>
-#include <fmt/format.h>
 
 #include <cstddef>
 #include <ctime>
@@ -171,23 +170,6 @@ inline T gtr_str_strip(T const& text)
     auto const new_begin = text.find_first_not_of("\t\n\v\f\r ");
     auto const new_end = text.find_last_not_of("\t\n\v\f\r ");
     return new_begin == T::npos ? T() : text.substr(new_begin, new_end == T::npos ? new_end : new_end - new_begin + 1);
-}
-
-template<typename T>
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-constexpr int gtr_compare_generic(T const& lhs, T const& rhs)
-{
-    if (lhs < rhs)
-    {
-        return -1;
-    }
-
-    if (lhs > rhs)
-    {
-        return 1;
-    }
-
-    return 0;
 }
 
 std::string gtr_get_full_resource_path(std::string const& rel_path);

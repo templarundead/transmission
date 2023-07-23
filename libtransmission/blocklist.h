@@ -1,4 +1,4 @@
-// This file Copyright © 2008-2022 Mnemosyne LLC.
+// This file Copyright © 2008-2023 Mnemosyne LLC.
 // It may be used under GPLv2 (SPDX: GPL-2.0-only), GPLv3 (SPDX: GPL-3.0-only),
 // or any future license endorsed by Mnemosyne LLC.
 // License text can be found in the licenses/ folder.
@@ -16,8 +16,6 @@
 #include <vector>
 
 #include "net.h" // for tr_address
-
-struct tr_address;
 
 namespace libtransmission
 {
@@ -51,7 +49,7 @@ public:
         return is_enabled_;
     }
 
-    void setEnabled(bool is_enabled) noexcept
+    constexpr void setEnabled(bool is_enabled) noexcept
     {
         is_enabled_ = is_enabled;
     }
