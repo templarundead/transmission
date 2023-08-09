@@ -574,7 +574,7 @@ jobs:
     env:
       NODE_PATH: /usr/lib/nodejs:/usr/share/nodejs
     container:
-      image: debian:11-slim
+      image: debian:12-slim
     steps:
       - name: Show Configuration
         run: |
