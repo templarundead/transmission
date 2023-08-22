@@ -1492,8 +1492,8 @@ static void printTorrentList(tr_variant* top)
             [](tr_variant* f, tr_variant* s)
             {
                 int64_t f_time = INT64_MIN, s_time = INT64_MIN;
-                tr_variantDictFindInt(f, TR_KEY_addedDate, &f_time);
-                tr_variantDictFindInt(s, TR_KEY_addedDate, &s_time);
+                (void)tr_variantDictFindInt(f, TR_KEY_addedDate, &f_time);
+                (void)tr_variantDictFindInt(s, TR_KEY_addedDate, &s_time);
                 return f_time < s_time;
             });
 
@@ -2170,10 +2170,8 @@ static int processResponse(char const* rpcurl, std::string_view response, Config
     else
     {
         auto& top = *otop;
-        int64_t tag = -1;
-        auto sv = std::string_view{};
 
-        if (tr_variantDictFindStrView(&top, TR_KEY_result, &sv))
+        if (auto sv = std::string_view{}; tr_variantDictFindStrView(&top, TR_KEY_result, &sv))
         {
             if (sv != "success"sv)
             {
@@ -2182,7 +2180,8 @@ static int processResponse(char const* rpcurl, std::string_view response, Config
             }
             else
             {
-                tr_variantDictFindInt(&top, TR_KEY_tag, &tag);
+                int64_t tag = -1;
+                (void)tr_variantDictFindInt(&top, TR_KEY_tag, &tag);
 
                 switch (tag)
                 {
@@ -2404,7 +2403,7 @@ static int flush(char const* rpcurl, tr_variant* benc, Config& config)
 
 static tr_variant* ensure_sset(tr_variant& sset)
 {
-    if (!tr_variantIsEmpty(&sset))
+    if (sset.has_value())
     {
         return tr_variantDictFind(&sset, Arguments);
     }
@@ -2416,7 +2415,7 @@ static tr_variant* ensure_sset(tr_variant& sset)
 
 static tr_variant* ensure_tset(tr_variant& tset)
 {
-    if (!tr_variantIsEmpty(&tset))
+    if (tset.has_value())
     {
         return tr_variantDictFind(&tset, Arguments);
     }
@@ -2449,17 +2448,17 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
             switch (c)
             {
             case 'a': /* add torrent */
-                if (!tr_variantIsEmpty(&sset))
+                if (sset.has_value())
                 {
                     status |= flush(rpcurl, &sset, config);
                 }
 
-                if (!tr_variantIsEmpty(&tadd))
+                if (tadd.has_value())
                 {
                     status |= flush(rpcurl, &tadd, config);
                 }
 
-                if (!tr_variantIsEmpty(&tset))
+                if (tset.has_value())
                 {
                     addIdArg(tr_variantDictFind(&tset, Arguments), config);
                     status |= flush(rpcurl, &tset, config);
@@ -2509,12 +2508,12 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
                 break;
 
             case 't': /* set current torrent */
-                if (!tr_variantIsEmpty(&tadd))
+                if (tadd.has_value())
                 {
                     status |= flush(rpcurl, &tadd, config);
                 }
 
-                if (!tr_variantIsEmpty(&tset))
+                if (tset.has_value())
                 {
                     addIdArg(tr_variantDictFind(&tset, Arguments), config);
                     status |= flush(rpcurl, &tset, config);
@@ -2538,7 +2537,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
                 break;
 
             case TR_OPT_UNK:
-                if (!tr_variantIsEmpty(&tadd))
+                if (tadd.has_value())
                 {
                     tr_variant* args = tr_variantDictFind(&tadd, Arguments);
                     auto const tmp = getEncodedMetainfo(optarg);
@@ -2571,7 +2570,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
             args = tr_variantDictAddDict(&top, Arguments, 0);
             fields = tr_variantDictAddList(args, TR_KEY_fields, 0);
 
-            if (!tr_variantIsEmpty(&tset))
+            if (tset.has_value())
             {
                 addIdArg(tr_variantDictFind(&tset, Arguments), config);
                 status |= flush(rpcurl, &tset, config);
@@ -2943,7 +2942,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
         {
             tr_variant* args;
 
-            if (!tr_variantIsEmpty(&tadd))
+            if (tadd.has_value())
             {
                 args = tr_variantDictFind(&tadd, Arguments);
             }
@@ -3016,7 +3015,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
         }
         else if (c == 961) /* set location */
         {
-            if (!tr_variantIsEmpty(&tadd))
+            if (tadd.has_value())
             {
                 tr_variant* args = tr_variantDictFind(&tadd, Arguments);
                 tr_variantDictAddStr(args, TR_KEY_download_dir, optarg);
@@ -3049,7 +3048,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
                 }
 
             case 's': /* start */
-                if (!tr_variantIsEmpty(&tadd))
+                if (tadd.has_value())
                 {
                     tr_variantDictAddBool(tr_variantDictFind(&tadd, TR_KEY_arguments), TR_KEY_paused, false);
                 }
@@ -3064,7 +3063,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
                 break;
 
             case 'S': /* stop */
-                if (!tr_variantIsEmpty(&tadd))
+                if (tadd.has_value())
                 {
                     tr_variantDictAddBool(tr_variantDictFind(&tadd, TR_KEY_arguments), TR_KEY_paused, true);
                 }
@@ -3081,7 +3080,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
 
             case 'w':
                 {
-                    auto* args = !tr_variantIsEmpty(&tadd) ? tr_variantDictFind(&tadd, TR_KEY_arguments) : ensure_sset(sset);
+                    auto* args = tadd.has_value() ? tr_variantDictFind(&tadd, TR_KEY_arguments) : ensure_sset(sset);
                     tr_variantDictAddStr(args, TR_KEY_download_dir, optarg);
                     break;
                 }
@@ -3126,7 +3125,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
 
             case 600:
                 {
-                    if (!tr_variantIsEmpty(&tset))
+                    if (tset.has_value())
                     {
                         addIdArg(tr_variantDictFind(&tset, Arguments), config);
                         status |= flush(rpcurl, &tset, config);
@@ -3142,7 +3141,7 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
 
             case 'v':
                 {
-                    if (!tr_variantIsEmpty(&tset))
+                    if (tset.has_value())
                     {
                         addIdArg(tr_variantDictFind(&tset, Arguments), config);
                         status |= flush(rpcurl, &tset, config);
@@ -3220,18 +3219,18 @@ static int processArgs(char const* rpcurl, int argc, char const* const* argv, Co
         }
     }
 
-    if (!tr_variantIsEmpty(&tadd))
+    if (tadd.has_value())
     {
         status |= flush(rpcurl, &tadd, config);
     }
 
-    if (!tr_variantIsEmpty(&tset))
+    if (tset.has_value())
     {
         addIdArg(tr_variantDictFind(&tset, Arguments), config);
         status |= flush(rpcurl, &tset, config);
     }
 
-    if (!tr_variantIsEmpty(&sset))
+    if (sset.has_value())
     {
         status |= flush(rpcurl, &sset, config);
     }
