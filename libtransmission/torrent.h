@@ -562,6 +562,8 @@ public:
 
     ///
 
+    [[nodiscard]] tr_stat stats() const;
+
     [[nodiscard]] constexpr auto is_queued() const noexcept
     {
         return this->is_queued_;
@@ -614,6 +616,13 @@ public:
     [[nodiscard]] constexpr auto id() const noexcept
     {
         return unique_id_;
+    }
+
+    void init_id(tr_torrent_id_t id)
+    {
+        TR_ASSERT(unique_id_ == tr_torrent_id_t{});
+        TR_ASSERT(id != tr_torrent_id_t{});
+        unique_id_ = id;
     }
 
     constexpr void set_date_active(time_t t) noexcept
@@ -915,8 +924,6 @@ public:
     libtransmission::SimpleObservable<tr_torrent*> stopped_;
     libtransmission::SimpleObservable<tr_torrent*> swarm_is_all_seeds_;
 
-    tr_stat stats = {};
-
     // TODO(ckerr): make private once some of torrent.cc's `tr_torrentFoo()` methods are member functions
     tr_completion completion;
 
@@ -979,8 +986,6 @@ public:
     uint64_t corruptPrev = 0;
 
     size_t queuePosition = 0;
-
-    tr_torrent_id_t unique_id_ = 0;
 
     tr_completeness completeness = TR_LEECH;
 
@@ -1147,13 +1152,15 @@ private:
 
     void set_verify_state(VerifyState state);
 
+    tr_stat stats_ = {};
+
     Error error_;
 
     VerifyDoneCallback verify_done_callback_;
 
     tr_interned_string bandwidth_group_;
 
-    SimpleSmoothedSpeed eta_speed_;
+    mutable SimpleSmoothedSpeed eta_speed_;
 
     /* If the initiator of the connection receives a handshake in which the
      * peer_id does not match the expected peerid, then the initiator is
@@ -1168,6 +1175,8 @@ private:
     float seed_ratio_ = 0.0F;
 
     tr_announce_key_t announce_key_ = tr_rand_obj<tr_announce_key_t>();
+
+    tr_torrent_id_t unique_id_ = 0;
 
     tr_ratiolimit seed_ratio_mode_ = TR_RATIOLIMIT_GLOBAL;
 
