@@ -133,7 +133,7 @@ auto getTorrents(tr_session* session, tr_variant* args)
                 std::begin(session->torrents()),
                 std::end(session->torrents()),
                 std::back_inserter(torrents),
-                [&cutoff](auto const* tor) { return tor->anyDate >= cutoff; });
+                [&cutoff](auto const* tor) { return tor->has_changed_since(cutoff); });
         }
         else
         {
@@ -1167,7 +1167,7 @@ char const* torrentSetLocation(
 
     for (auto* tor : getTorrents(session, args_in))
     {
-        tor->set_location(location, move, nullptr, nullptr);
+        tor->set_location(location, move, nullptr);
         session->rpcNotify(TR_RPC_TORRENT_MOVED, tor);
     }
 

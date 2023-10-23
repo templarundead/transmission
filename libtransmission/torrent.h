@@ -110,11 +110,7 @@ public:
     {
     }
 
-    void set_location(
-        std::string_view location,
-        bool move_from_old_path,
-        double volatile* setme_progress,
-        int volatile* setme_state);
+    void set_location(std::string_view location, bool move_from_old_path, int volatile* setme_state);
 
     void rename_path(
         std::string_view oldpath,
@@ -625,14 +621,11 @@ public:
         unique_id_ = id;
     }
 
-    constexpr void set_date_active(time_t t) noexcept
+    constexpr void set_date_active(time_t when) noexcept
     {
-        this->activityDate = t;
+        this->activityDate = when;
 
-        if (this->anyDate < t)
-        {
-            this->anyDate = t;
-        }
+        bump_date_changed(when);
     }
 
     [[nodiscard]] constexpr auto activity() const noexcept
@@ -708,6 +701,11 @@ public:
 
     void mark_edited();
     void mark_changed();
+
+    [[nodiscard]] constexpr auto has_changed_since(time_t when) const noexcept
+    {
+        return changed_date_ > when;
+    }
 
     void set_bandwidth_group(std::string_view group_name) noexcept;
 
@@ -911,6 +909,8 @@ public:
         return error_;
     }
 
+    void init(tr_ctor const* ctor);
+
     tr_torrent_metainfo metainfo_;
 
     tr_bandwidth bandwidth_;
@@ -933,8 +933,6 @@ public:
     tr_bitfield checked_pieces_ = tr_bitfield{ 0 };
 
     tr_file_piece_map fpm_ = tr_file_piece_map{ metainfo_ };
-    tr_files_wanted files_wanted_{ &fpm_ };
-    tr_file_priorities file_priorities_{ &fpm_ };
 
     using labels_t = std::vector<tr_quark>;
     labels_t labels;
@@ -970,7 +968,6 @@ public:
 
     time_t activityDate = 0;
     time_t addedDate = 0;
-    time_t anyDate = 0;
     time_t doneDate = 0;
     time_t editDate = 0;
     time_t startDate = 0;
@@ -1004,8 +1001,11 @@ public:
     bool start_when_stable = false;
 
 private:
+    friend tr_file_view tr_torrentFile(tr_torrent const* tor, tr_file_index_t file);
     friend tr_stat const* tr_torrentStat(tr_torrent* tor);
     friend tr_torrent* tr_torrentNew(tr_ctor* ctor, tr_torrent** setme_duplicate_of);
+    friend uint64_t tr_torrentGetBytesLeftToAllocate(tr_torrent const* tor);
+    friend uint64_t tr_torrentGetBytesLeftToAllocate(tr_torrent const* tor);
 
     enum class VerifyState : uint8_t
     {
@@ -1150,7 +1150,17 @@ private:
         }
     }
 
+    constexpr void bump_date_changed(time_t when)
+    {
+        if (changed_date_ < when)
+        {
+            changed_date_ = when;
+        }
+    }
+
     void set_verify_state(VerifyState state);
+
+    void on_metainfo_updated();
 
     tr_stat stats_ = {};
 
@@ -1162,6 +1172,9 @@ private:
 
     mutable SimpleSmoothedSpeed eta_speed_;
 
+    tr_files_wanted files_wanted_{ &fpm_ };
+    tr_file_priorities file_priorities_{ &fpm_ };
+
     /* If the initiator of the connection receives a handshake in which the
      * peer_id does not match the expected peerid, then the initiator is
      * expected to drop the connection. Note that the initiator presumably
@@ -1170,6 +1183,8 @@ private:
      * and in the handshake are expected to match.
      */
     tr_peer_id_t peer_id_ = tr_peerIdInit();
+
+    time_t changed_date_ = 0;
 
     float verify_progress_ = -1.0F;
     float seed_ratio_ = 0.0F;
