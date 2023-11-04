@@ -36,7 +36,7 @@ jobs:
           fi
       - name: Get Source
         id: get-source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           fetch-depth: 0
           path: src
@@ -80,7 +80,7 @@ jobs:
           echo '${{ toJSON(runner) }}'
           cat /etc/os-release
       - name: Get Source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           submodules: recursive
       - name: Get Dependencies
@@ -145,7 +145,7 @@ jobs:
             ninja-build \
             npm
       - name: Get Source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           submodules: recursive
           path: src
@@ -206,7 +206,7 @@ jobs:
             ninja-build \
             npm
       - name: Get Source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           submodules: recursive
           path: src
@@ -247,7 +247,7 @@ jobs:
         if: ${{ needs.what-to-make.outputs.make-qt == 'true' }}
         run: brew install qt@5
       - name: Get Source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           path: src
           submodules: recursive
@@ -324,7 +324,7 @@ jobs:
         if: ${{ needs.what-to-make.outputs.make-qt == 'true' }}
         run: apk add --upgrade qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev
       - name: Get Source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           path: src
           submodules: recursive
@@ -390,7 +390,7 @@ jobs:
 
           Install-Module -Name Pscx -RequiredVersion 4.0.0-beta4 -AllowPrerelease -Force
       - name: Get Source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           path: src
           submodules: recursive
@@ -483,7 +483,7 @@ jobs:
             libssl-dev \
             ninja-build
       - name: Get Source
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           path: src
           submodules: recursive
