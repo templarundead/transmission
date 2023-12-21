@@ -520,7 +520,7 @@ jobs:
         if: ${{ needs.what-to-make.outputs.make-qt == 'true' }}
         run: brew install qt@5
       - name: Get Source
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: source-tarball
       - name: Extract Source
@@ -609,7 +609,7 @@ jobs:
         if: ${{ needs.what-to-make.outputs.make-qt == 'true' }}
         run: apt-get install -y --no-install-recommends qtbase5-dev libqt5svg5-dev qttools5-dev
       - name: Get Source
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: source-tarball
       - name: Extract Source
@@ -685,7 +685,7 @@ jobs:
         if: ${{ needs.what-to-make.outputs.make-qt == 'true' }}
         run: dnf install -y qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel
       - name: Get Source
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: source-tarball
       - name: Extract Source
@@ -758,7 +758,7 @@ jobs:
         if: ${{ needs.what-to-make.outputs.make-qt == 'true' }}
         run: sudo apt-get install -y --no-install-recommends qtbase5-dev libqt5svg5-dev qttools5-dev
       - name: Get Source
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: source-tarball
       - name: Extract Source
