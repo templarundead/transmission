@@ -23,7 +23,7 @@
     "@babel/plugin-transform-class-properties": "^7.22.5",
     "@primer/stylelint-config": "^12.8.0",
     "css-loader": "^6.8.1",
-    "css-minimizer-webpack-plugin": "^5.0.1",
+    "css-minimizer-webpack-plugin": "^6.0.0",
     "eslint": "^8.45.0",
     "eslint-plugin-sonarjs": "^0.23.0",
     "eslint-plugin-unicorn": "^48.0.0",
