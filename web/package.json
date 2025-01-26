@@ -24,7 +24,7 @@
     "@primer/stylelint-config": "^12.8.0",
     "css-loader": "^7.0.0",
     "css-minimizer-webpack-plugin": "^6.0.0",
-    "eslint": "^8.45.0",
+    "eslint": "^9.0.0",
     "eslint-plugin-sonarjs": "^0.25.0",
     "eslint-plugin-unicorn": "^51.0.0",
     "file-loader": "^6.2.0",
